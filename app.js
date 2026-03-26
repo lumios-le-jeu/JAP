@@ -1,7 +1,8 @@
 /* ================================================================
-   JAP — Le Jour d'Après | app.js V5
+   JAP — Le Jour d'Après | app.js V6
 ================================================================ */
 'use strict';
+console.log("%c JAP v.0.1 ", "background: #8b5cf6; color: white; padding: 4px; border-radius: 4px;", "Application Initialized");
 
 /* ── STORE ───────────────────────────────────────────────────── */
 const Store = {
@@ -204,6 +205,7 @@ function njS1(){
 }
 function njS2(){ _nj.defunt=document.getElementById("nj-def").value.trim(); _nj.adresse=document.getElementById("nj-adr").value.trim(); _nj.notaire=document.getElementById("nj-not").value.trim(); _nj.seuil=document.getElementById("nj-sou").value; if(!_nj.defunt)return toast("Nom défunt requis","error"); _njStep=3; renderNewJapStep(); }
 
+/* ── MODALE HERITIER (CREATION & EDITION) ────────────────────── */
 function showAddHModal() {
   Modal.open(`<div class='modal-title'>Nouvel Héritier</div>
     <div class='form-group'><label class="form-label" style="text-transform:uppercase">Nom Complet</label><input id="ha-nom" class="form-input" placeholder="Ex: Jean Leborgne" /></div>
@@ -219,6 +221,41 @@ function showAddHModal() {
     <button class="btn btn-ghost btn-sm w-full mb-16" style="border:1px dashed var(--border)" onclick="uiAddEnfant()">+ Ajouter un enfant</button>
 
     <button class="btn btn-primary w-full mt-8" onclick="saveH()">Ajouter l'héritier</button>
+  `);
+}
+
+function showEditHModal(japId, hId = null) {
+  const j = Store.getJap(japId);
+  const h = hId ? j.herit.find(x => x.id === hId) : {nom:'', email:'', role:'ayant_droit', parts:1, recus:0, enfants:[]};
+  
+  const enfHtml = (h.enfants||[]).map(e => `
+    <div class="flex gap-8 mb-8 align-center enfant-row">
+      <input class="form-input" style="flex:1" placeholder="Nom/Prénom" value="${esc(e.nom)}" />
+      <input class="form-input" style="flex:1" placeholder="Email ou Tél" value="${esc(e.contact)}" />
+      <button class="btn btn-sm btn-danger" style="padding:4px 8px" onclick="this.parentElement.remove()">×</button>
+    </div>
+  `).join('');
+
+  Modal.open(`<div class='modal-title'>${hId ? 'Modifier Héritier' : 'Nouvel Héritier'}</div>
+    <div class='form-group'><label class="form-label" style="text-transform:uppercase">Nom Complet</label><input id="ha-nom" class="form-input" value="${esc(h.nom)}" /></div>
+    <div class='form-group'><label class="form-label" style="text-transform:uppercase">Email</label><input id="ha-email" class="form-input" value="${esc(h.email)}" /></div>
+    <div class='flex gap-8 mb-16'>
+      <div class='form-group flex-1'><label class="form-label" style="text-transform:uppercase">Rôle</label>
+        <select id="ha-role" class="form-select">
+          <option value="ayant_droit" ${h.role==='ayant_droit'?'selected':''}>Ayant droit</option>
+          <option value="décédé" ${h.role==='décédé'?'selected':''}>Décédé</option>
+          <option value="expert" ${h.role==='expert'?'selected':''}>Expert valeur</option>
+        </select>
+      </div>
+      <div class='form-group flex-1'><label class="form-label" style="text-transform:uppercase">Nb Parts</label><input id="ha-parts" class="form-input" type="number" step="0.5" value="${h.parts}" /></div>
+    </div>
+    <div class='form-group'><label class="form-label" style="text-transform:uppercase">Biens déjà reçus (€)</label><input id="ha-rec" class="form-input" type="number" value="${h.recus}" /></div>
+    
+    <label class="form-label" style="text-transform:uppercase">Enfant(s) de l'héritier</label>
+    <div id="ha-enfants-container" class="mb-8">${enfHtml}</div>
+    <button class="btn btn-ghost btn-sm w-full mb-16" style="border:1px dashed var(--border)" onclick="uiAddEnfant()">+ Ajouter un enfant</button>
+
+    <button class="btn btn-primary w-full mt-8" onclick="saveEditH('${japId}', '${hId||''}')">Enregistrer</button>
   `);
 }
 
@@ -242,6 +279,46 @@ function saveH() {
   _nj.herit.push({ id: uid(), nom: nom, email: document.getElementById("ha-email").value.trim().toLowerCase(), role: document.getElementById("ha-role").value, parts: parseFloat(document.getElementById("ha-parts").value)||1, recus: parseFloat(document.getElementById("ha-rec").value)||0, enfants: enfantsArr });
   Modal.close(); renderNewJapStep();
 }
+
+function saveEditH(japId, hId) {
+  const nom = document.getElementById("ha-nom").value.trim();
+  if(!nom) return toast("Nom requis", "error");
+  const enfantsArr = [];
+  document.querySelectorAll('.enfant-row').forEach(r => {
+    const inputs = r.querySelectorAll('input');
+    const n = inputs[0].value.trim(); const c = inputs[1].value.trim().toLowerCase();
+    if(n || c) enfantsArr.push({nom: n, contact: c});
+  });
+
+  const j = Store.getJap(japId);
+  if (!j.herit) j.herit = [];
+  
+  const hData = { 
+    id: hId || uid(), 
+    nom: nom, 
+    email: document.getElementById("ha-email").value.trim().toLowerCase(), 
+    role: document.getElementById("ha-role").value, 
+    parts: parseFloat(document.getElementById("ha-parts").value)||1, 
+    recus: parseFloat(document.getElementById("ha-rec").value)||0, 
+    enfants: enfantsArr 
+  };
+
+  if (hId) {
+    const idx = j.herit.findIndex(x => x.id === hId);
+    if (idx >= 0) {
+      hData.souhaits = j.herit[idx].souhaits; // keep wishlist if exists
+      j.herit[idx] = hData;
+    }
+  } else {
+    j.herit.push(hData);
+  }
+
+  Store.saveJap(j);
+  Modal.close();
+  toast(hId ? "Héritier modifié" : "Héritier ajouté");
+  renderDashboard({id: japId});
+}
+
 function finNJ(){ Store.saveJap(_nj); toast("JAP créé !"); Router.go("/jap/"+_nj.id); }
 
 /* ── VIEW DASHBOARD ──────────────────────────────────────────── */
@@ -261,7 +338,7 @@ function saveInfos(id) {
 function mkAdmin(id, email) {
   const j = Store.getJap(id);
   if(!j.admins) j.admins = [];
-  if(!j.admins.includes(email)) j.admins.push(email);
+  if(!j.admins.includes(email.toLowerCase())) j.admins.push(email.toLowerCase());
   Store.saveJap(j);
   toast("Promu Administrateur !");
   renderDashboard({id});
@@ -280,7 +357,7 @@ function renderDashboard({id}){
       <div class='card-title' style='font-size:20px'>⚖️ ${esc(j.defunt)}</div>
       <div class='text-muted mt-8'>Notaire: ${esc(j.notaire||'Non renseigné')}</div>
       <div class='text-gold fw-700 mt-8 mb-8'>Seuil soulte: ${fmt(j.seuil||200)}</div>
-      ${isAdmin && j.statut==="prep"?"<button class='btn btn-ghost btn-sm' onclick='editInfosModal(\""+id+"\")'>✏️ Modifier</button>":""}
+      ${isAdmin && j.statut==="prep"?"<button class='btn btn-ghost btn-sm' onclick='editInfosModal(\""+id+"\")'>✏️ Modifier infos</button>":""}
     </div>
   <div class='card mb-24 card-clickable' onclick='navigator.clipboard.writeText("${j.code}");toast("Code Copié !")'><div class='flex align-center justify-between'><div><div class='text-muted text-small'>Code d'invitation</div><div class='fw-700' style='font-size:16px;letter-spacing:1px'>${j.code}</div></div><span style='font-size:22px'>📋</span></div></div>
   
@@ -303,8 +380,9 @@ function renderDashboard({id}){
   <div class='section-title mt-24'>Membres & Héritiers</div>
   ${(j.herit||[]).map(h=>{
     const estAdmin = (j.admins||[]).includes((h.email||"").toLowerCase());
-    return `<div class='heir-chip'><div class='heir-chip-avatar'>${ini(h.nom)}</div><div class='heir-chip-info'><div class='fw-700'>${esc(h.nom)} ${estAdmin?`<span style="color:var(--gold);font-size:12px;margin-left:4px">👑 Admin</span>`:''} <span class="text-small text-muted" style="font-weight:normal;margin-left:4px">(${h.parts||1} part)</span></div><div class='text-muted text-small'>Biens reçus: ${fmt(h.recus||0)} | ${h.role}</div></div>${isAdmin && !estAdmin ? `<button class="btn btn-sm btn-ghost" style="font-size:10px;padding:4px 8px;margin-left:8px;" onclick="mkAdmin('${id}', '${esc(h.email)}')">Mettre Admin</button>` : ''}</div>`
+    return `<div class='heir-chip'><div class='heir-chip-avatar'>${ini(h.nom)}</div><div class='heir-chip-info'><div class='fw-700'>${esc(h.nom)} ${estAdmin?`<span style="color:var(--gold);font-size:12px;margin-left:4px">👑 Admin</span>`:''} <span class="text-small text-muted" style="font-weight:normal;margin-left:4px">(${h.parts||1} part)</span></div><div class='text-muted text-small'>Biens reçus: ${fmt(h.recus||0)} | ${h.role}</div></div><div style="display:flex;flex-direction:column;gap:4px">${isAdmin && !estAdmin ? `<button class="btn btn-sm btn-ghost" style="font-size:10px;padding:4px 8px;" onclick="mkAdmin('${id}', '${esc(h.email)}')">Mettre Admin</button>` : ''}${isAdmin ? `<button class="btn btn-sm btn-ghost" style="font-size:10px;padding:4px 8px;" onclick="showEditHModal('${id}', '${h.id}')">✏️ Modifier</button>` : ''}</div></div>`
   }).join("")}
+  ${isAdmin ? `<button class="btn btn-ghost w-full mb-16" style="border:1px dashed var(--border)" onclick="showEditHModal('${id}')">+ Ajouter un héritier / membre</button>` : ''}
   
   ${isAdmin ? `<button class='btn btn-danger btn-sm mt-32 mb-24 w-full' onclick='if(confirm("Supprimer définitivement la succession ?")){Store.deleteJap("${id}");Router.go("/");}'>🗑️ Supprimer cette succession</button>` : ""}
   </div>`;
