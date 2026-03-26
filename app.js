@@ -1,5 +1,5 @@
 /* ================================================================
-   JAP — Le Jour d'Après | app.js V3
+   JAP — Le Jour d'Après | app.js V4
 ================================================================ */
 'use strict';
 
@@ -17,7 +17,7 @@ const Store = {
     this.saveJaps(list);
   },
   deleteJap(id){this.saveJaps(this.getJaps().filter(j=>j.id!==id));},
-  getUser(){return this._get('jap_user',{email:'admin@jap.fr'});},
+  getUser(){return this._get('jap_user',{email:'', nom:''});},
   setUser(u){this._set('jap_user',u);},
 };
 
@@ -27,94 +27,66 @@ const esc = s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(
 const fmt = n=>(parseFloat(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:0,maximumFractionDigits:0})+' €';
 const ini = e=>(String(e||'?').split('@')[0]).slice(0,2).toUpperCase();
 
-const CATS=[
-  {v:'mobilier',l:'Mobilier',e:'🛋️'},
-  {v:'art',l:'Art / Déco',e:'🖼️'},
-  {v:'bijoux',l:'Bijoux',e:'💎'},
-  {v:'vaisselle',l:'Vaisselle',e:'🍽️'},
-  {v:'livres',l:'Livres',e:'📚'},
-  {v:'electronique',l:'Électronique',e:'💻'},
-  {v:'vetements',l:'Vêtements',e:'👗'},
-  {v:'vehicule',l:'Véhicule',e:'🚗'},
-  {v:'outil',l:'Outils',e:'🔧'},
-  {v:'autre',l:'Autre',e:'📦'},
-];
+const CATS=[{v:'mobilier',l:'Mobilier',e:'🛋️'},{v:'art',l:'Art / Déco',e:'🖼️'},{v:'bijoux',l:'Bijoux',e:'💎'},{v:'vaisselle',l:'Vaisselle',e:'🍽️'},{v:'livres',l:'Livres',e:'📚'},{v:'electronique',l:'Électronique',e:'💻'},{v:'vetements',l:'Vêtements',e:'👗'},{v:'vehicule',l:'Véhicule',e:'🚗'},{v:'outil',l:'Outils',e:'🔧'},{v:'autre',l:'Autre',e:'📦'}];
 const catE=v=>(CATS.find(c=>c.v===v)||{e:'📦'}).e;
 const catL=v=>(CATS.find(c=>c.v===v)||{l:'Autre'}).l;
 
-const STATUTS={
-  prep:{label:'Préparation',css:'status-prep'},
-  inv:{label:'Inventaire',css:'status-inv'},
-  souhaits:{label:'Listes de souhaits',css:'status-wish'},
-  partage:{label:'Partage terminé',css:'status-done'},
-};
+const STATUTS={prep:{label:'Préparation',css:'status-prep'},inv:{label:'Inventaire',css:'status-inv'},souhaits:{label:'Listes de souhaits',css:'status-wish'},partage:{label:'Partage terminé',css:'status-done'}};
 
 function toast(msg,type='success'){
-  const el=document.createElement('div');
-  el.className=`toast toast-${type}`;
-  el.textContent=msg;
-  document.getElementById('toast-container').appendChild(el);
-  setTimeout(()=>el.remove(),3100);
+  const el=document.createElement('div'); el.className=`toast toast-${type}`; el.textContent=msg;
+  document.getElementById('toast-container').appendChild(el); setTimeout(()=>el.remove(),3100);
 }
 
 const Modal={
   open(html){
-    document.getElementById('modal-content').innerHTML=html;
-    document.getElementById('modal-overlay').classList.remove('hidden');
-    document.getElementById('modal-overlay').onclick=e=>{
-      if(e.target===document.getElementById('modal-overlay'))Modal.close();
-    };
+    document.getElementById('modal-content').innerHTML=html; document.getElementById('modal-overlay').classList.remove('hidden');
+    document.getElementById('modal-overlay').onclick=e=>{if(e.target===document.getElementById('modal-overlay'))Modal.close();};
   },
   close(){document.getElementById('modal-overlay').classList.add('hidden');},
 };
 
 const Router={
-  routes:{},
-  add(pat,fn){this.routes[pat]=fn;},
-  go(path){location.hash=path;},
+  routes:{}, add(pat,fn){this.routes[pat]=fn;}, go(path){location.hash=path;},
   match(hash){
     const path=hash.replace(/^#/,'')||'/';
     for(const[pat,fn]of Object.entries(this.routes)){
-      const keys=[];
-      const re=new RegExp('^'+pat.replace(/:([^/]+)/g,(_,k)=>{keys.push(k);return'([^/]+)';})+[].join('')+'$');
-      const m=path.match(re);
-      if(m){
-        const params={};
-        keys.forEach((k,i)=>{params[k]=decodeURIComponent(m[i+1]);});
-        return{fn,params};
-      }
+      const keys=[]; const re=new RegExp('^'+pat.replace(/:([^/]+)/g,(_,k)=>{keys.push(k);return'([^/]+)';})+[].join('')+'$');
+      const m=path.match(re); if(m){ const params={}; keys.forEach((k,i)=>{params[k]=decodeURIComponent(m[i+1]);}); return{fn,params}; }
     }
     return null;
   },
-  dispatch(){
-    Modal.close();
-    const r=this.match(location.hash||'#/');
-    const app=document.getElementById('app');
-    if(r){app.innerHTML='';r.fn(r.params);}
-    else{app.innerHTML='<div class="view"><div class="empty-state">Lien introuvable</div></div>';}
-  },
+  dispatch(){ Modal.close(); const r=this.match(location.hash||'#/'); const app=document.getElementById('app'); if(r){app.innerHTML='';r.fn(r.params);}else{app.innerHTML='<div class="view"><div class="empty-state">Introuvable</div></div>';} },
   init(){window.addEventListener('hashchange',()=>this.dispatch());this.dispatch();},
 };
 
+/* ── HELPERS DROITS ──────────────────────────────────────────── */
+function getTargetHeir(jap) {
+  const user = Store.getUser();
+  if(!user.email) return { type: 'autre', heir: null };
+  const asHeir = (jap.herit||[]).find(h => h.email && h.email.toLowerCase() === user.email.toLowerCase());
+  if (asHeir) return { type: 'heritier', heir: asHeir };
+  const asEnf = (jap.herit||[]).find(h => h.enfants && h.enfants.some(e => e.contact && e.contact.toLowerCase() === user.email.toLowerCase()));
+  if (asEnf) return { type: 'enfant', heir: asEnf };
+  return { type: 'autre', heir: null };
+}
+
 /* ── VUE ACCUEIL ─────────────────────────────────────────────── */
 function renderWelcome(){
-  const japs=Store.getJaps();
+  const japs=Store.getJaps(); const user=Store.getUser();
   const list=japs.length?japs.map(j=>{
     const s=STATUTS[j.statut]||STATUTS.prep;
     return `<div class='jap-item card-clickable' onclick='Router.go("/jap/${j.id}")'>
       <div class='jap-item-avatar'>${ini(j.defunt)}</div>
-      <div class='jap-item-info'>
-        <div class='jap-item-name'>${esc(j.defunt)}</div>
-        <div class='jap-item-meta'>${(j.herit||[]).length} héritier(s)</div>
-      </div>
+      <div class='jap-item-info'><div class='jap-item-name'>${esc(j.defunt)}</div><div class='jap-item-meta'>${(j.herit||[]).length} héritier(s)</div></div>
       <span class='jap-item-status ${s.css}'>${s.label}</span>
     </div>`;
   }).join(''):`<div class='empty-state'><div class='empty-state-icon'>⚖️</div><div class='empty-state-title'>Aucune succession</div></div>`;
 
   document.getElementById('app').innerHTML=`
-    <div class='welcome-hero'>
-      <div class='welcome-logo'>JAP</div>
-      <div class='welcome-logo-sub'>Le Jour d'Après</div>
+    <div class='welcome-hero' style="padding-top:24px">
+      ${user.email ? `<div style="text-align:right;font-size:12px;opacity:0.8;margin-bottom:12px">👤 Connecté : ${user.email} <a href="#" onclick="Store.setUser({});renderWelcome()" style="color:white;text-decoration:underline;margin-left:8px">Déconnexion</a></div>` : ''}
+      <div class='welcome-logo'>JAP</div><div class='welcome-logo-sub'>Le Jour d'Après</div>
       <div class='welcome-tagline'>Le tricount de l'héritage — partagez en toute équité</div>
       <div class='welcome-actions'>
         <button class='btn btn-primary' onclick='Router.go("/jap/new")'>✨ Nouveau JAP</button>
@@ -125,33 +97,55 @@ function renderWelcome(){
 }
 
 function showJoin(){
-  Modal.open(`<div class='modal-title'>Rejoindre un JAP</div><input id='join-code' class='form-input mb-16' placeholder='Code JAP' /><button class='btn btn-primary' onclick='doJoin()'>Rejoindre</button>`);
+  Modal.open(`<div class='modal-title'>Rejoindre un JAP</div>
+    <div class="form-group"><label class="form-label">Code JAP</label><input id='join-code' class='form-input mb-8' placeholder='ex: JAP_ABCD' /></div>
+    <div class="form-group"><label class="form-label">Votre Email d'identification</label><input id='join-email' class='form-input mb-16' type='email' placeholder='votre@email.com' value='${Store.getUser().email||""}' /></div>
+    <button class='btn btn-primary' onclick='doJoin()'>Accéder</button>`);
 }
 function doJoin(){
   const c=document.getElementById('join-code').value.trim().toUpperCase();
+  const email=document.getElementById('join-email').value.trim().toLowerCase();
   const j=Store.getJaps().find(x=>x.code===c);
-  if(j){Modal.close();Router.go('/jap/'+j.id);}else toast('Invalide','error');
+  if(!email) return toast("Email requis pour s'identifier", "warning");
+  if(j){
+    Store.setUser({email: email}); Modal.close(); Router.go('/jap/'+j.id);
+  } else toast('Code Introuvable','error');
 }
 
 /* ── VUE NOUVEAU JAP ─────────────────────────────────────────── */
 let _njStep=1, _nj={};
-function renderNewJap(){ _nj={id:uid(),code:"JAP_"+uid().toUpperCase(),herit:[],biens:[],statut:"prep"}; _njStep=1; renderNewJapStep(); }
+function renderNewJap(){ _nj={id:uid(),code:"JAP_"+uid().toUpperCase(),createur:{},herit:[],biens:[],statut:"prep"}; _njStep=1; renderNewJapStep(); }
 function renderNewJapStep(){
   const app=document.getElementById("app");
-  const sHtml=`<div class='steps'>${["Succession","Héritiers","Fin"].map((s,i)=>{
+  const sHtml=`<div class='steps'>${["Créateur", "Succession","Héritiers","Fin"].map((s,i)=>{
     const n=i+1, cls=n<_njStep?"done":n===_njStep?"active":"";
-    return `<div class='step ${cls}'>${s}</div>`;
+    return `<div class='step ${cls}' style='font-size:11px'>${s}</div>`;
   }).join("")}</div>`;
   const top=`<div class='topbar'><button class='topbar-back' onclick='_njStep>1?(_njStep--,renderNewJapStep()):Router.go("/")'>←</button><div class='topbar-title'>Nouveau JAP</div></div>`;
   
   let body="";
   if(_njStep===1){
-    body=`<div class='form-group'><label class='form-label'>Nom du défunt *</label><input id='nj-def' class='form-input' value='${esc(_nj.defunt)}' /></div>
-    <div class='form-group'><label class='form-label'>Adresse</label><input id='nj-adr' class='form-input' value='${esc(_nj.adresse)}' /></div>
-    <div class='form-group'><label class='form-label'>Notaire / Étude</label><input id='nj-not' class='form-input' placeholder="Maître Dupont..." value='${esc(_nj.notaire)}' /></div>
-    <div class='form-group'><label class='form-label'>Seuil de soulte de confort (€)</label><input id='nj-sou' class='form-input' type='number' value='${_nj.seuil||200}' /></div>
-    <button class='btn btn-primary mt-16 w-full' onclick='njS1()'>Continuer</button>`;
+    body=`<div class='form-group'><label class='form-label'>Votre Nom</label><input id='nj-c-nom' class='form-input' /></div>
+    <div class='form-group'><label class='form-label'>Votre Prénom</label><input id='nj-c-pre' class='form-input' /></div>
+    <div class='form-group'><label class='form-label'>Votre Email</label><input id='nj-c-emi' type='email' class='form-input' value='${Store.getUser().email||""}' /></div>
+    <div class='form-group'><label class='form-label'>Votre Téléphone</label><input id='nj-c-tel' class='form-input' /></div>
+    <div class='form-group'><label class='form-label'>Votre Adresse</label><input id='nj-c-adr' class='form-input' /></div>
+    <div class='form-group'><label class='form-label'>Votre lien avec le défunt</label>
+      <select id='nj-c-lie' class='form-select'>
+         <option value='heritier'>Héritier direct</option>
+         <option value='enfant'>Enfant d'un héritier</option>
+         <option value='autre'>Autre (Notaire, Ami, etc.)</option>
+      </select>
+    </div>
+    <div class='text-small text-muted mb-16' id="nj-c-hint">En tant qu'héritier, vous serez automatiquement ajouté à la liste des héritiers.</div>
+    <button class='btn btn-primary w-full' onclick='njS1()'>Suivant (Succession)</button>`;
   }else if(_njStep===2){
+    body=`<div class='form-group'><label class='form-label'>Nom du défunt *</label><input id='nj-def' class='form-input' value='${esc(_nj.defunt||"")}' /></div>
+    <div class='form-group'><label class='form-label'>Adresse du défunt</label><input id='nj-adr' class='form-input' value='${esc(_nj.adresse||"")}' /></div>
+    <div class='form-group'><label class='form-label'>Notaire / Étude</label><input id='nj-not' class='form-input' placeholder="Maître Dupont..." value='${esc(_nj.notaire||"")}' /></div>
+    <div class='form-group'><label class='form-label'>Seuil de soulte de confort (€)</label><input id='nj-sou' class='form-input' type='number' value='${_nj.seuil||200}' /></div>
+    <button class='btn btn-primary mt-16 w-full' onclick='njS2()'>Continuer</button>`;
+  }else if(_njStep===3){
     const list=(_nj.herit||[]).map((h,i)=>{
       const enfantsHtml = (h.enfants && h.enfants.length) ? `<div class='text-small text-muted'>Enfant(s): ${h.enfants.map(e=>esc(e.nom)+' ('+esc(e.contact)+')').join(', ')}</div>` : '';
       return `<div class='heir-chip' style='align-items:flex-start'>
@@ -165,15 +159,51 @@ function renderNewJapStep(){
       <button class='btn btn-sm btn-danger mt-4' onclick='_nj.herit.splice(${i},1);renderNewJapStep()'>×</button>
     </div>`}).join("");
     
-    body=`<div id='h-list' class="mb-16">${list}</div>
+    let hint = "";
+    if(_nj.createur.lien === 'enfant') {
+       hint = `<div class='card mb-16' style="background:rgba(255,255,255,0.05);padding:12px;font-size:12px">💡 Puisque vous êtes "Enfant d'héritier", n'oubliez pas d'ajouter votre parent à la liste ci-dessous, et de renseigner <b>votre e-mail (${_nj.createur.email})</b> dans ses enfants !</div>`;
+    }
+
+    body=`${hint}<div id='h-list' class="mb-16">${list}</div>
     <button class='btn btn-ghost w-full mb-24' style='border:1px dashed var(--border)' onclick='showAddHModal()'>+ Ajouter un héritier</button>
-    <button class='btn btn-primary w-full' onclick='_nj.herit.length?(_njStep=3,renderNewJapStep()):toast("Ajoutez un héritier","error")'>Suivant</button>`;
+    <button class='btn btn-primary w-full' onclick='_nj.herit.length?(_njStep=4,renderNewJapStep()):toast("Ajoutez au moins un héritier","error")'>Suivant</button>`;
   }else{
     body=`<div class='card text-center mb-16'><div style='font-size:24px;font-weight:700'>⚖️ ${esc(_nj.defunt)}</div><div class='text-muted mt-8'>${esc(_nj.notaire)}</div><div class='text-gold fw-700 mt-8'>${_nj.herit.length} héritiers configurés</div></div><button class='btn btn-primary w-full' onclick='finNJ()'>✅ Créer le JAP</button>`;
   }
   app.innerHTML=top+`<div class='view'>${sHtml}${body}</div>`;
+
+  // Dynamic hint in Step 1
+  if(_njStep===1) {
+    document.getElementById('nj-c-lie').addEventListener('change', function(e) {
+      const hint = document.getElementById('nj-c-hint');
+      if(e.target.value === 'heritier') hint.innerHTML = "En tant qu'héritier, vous serez automatiquement ajouté à la liste des héritiers.";
+      else if(e.target.value === 'enfant') hint.innerHTML = "Vous serez lié au panier de votre parent héritier. Vous pourrez l'indiquer à l'étape Héritiers.";
+      else hint.innerHTML = "Vous aurez un accès en consultation du JAP.";
+    });
+  }
 }
-function njS1(){ _nj.defunt=document.getElementById("nj-def").value.trim(); _nj.adresse=document.getElementById("nj-adr").value.trim(); _nj.notaire=document.getElementById("nj-not").value.trim(); _nj.seuil=document.getElementById("nj-sou").value; if(!_nj.defunt)return toast("Nom requis","error"); _njStep=2; renderNewJapStep(); }
+
+function njS1(){
+  const no=document.getElementById("nj-c-nom").value.trim();
+  const pr=document.getElementById("nj-c-pre").value.trim();
+  const em=document.getElementById("nj-c-emi").value.trim().toLowerCase();
+  const ad=document.getElementById("nj-c-adr").value.trim();
+  const te=document.getElementById("nj-c-tel").value.trim();
+  const li=document.getElementById("nj-c-lie").value;
+  if(!no || !pr || !em) return toast("Nom, Prénom et Email requis", "error");
+
+  _nj.createur = {nom:no, prenom:pr, email:em, tel:te, adresse:ad, lien:li};
+  Store.setUser({email: em, nom: pr+' '+no});
+
+  // Auto add as heir if lien === heritier
+  if(li === 'heritier') {
+    if(!_nj.herit.find(h=>h.email===em)) {
+       _nj.herit.push({id:uid(), nom: pr+' '+no, email: em, role:'ayant_droit', parts:1, recus:0, enfants:[]});
+    }
+  }
+  _njStep=2; renderNewJapStep();
+}
+function njS2(){ _nj.defunt=document.getElementById("nj-def").value.trim(); _nj.adresse=document.getElementById("nj-adr").value.trim(); _nj.notaire=document.getElementById("nj-not").value.trim(); _nj.seuil=document.getElementById("nj-sou").value; if(!_nj.defunt)return toast("Nom défunt requis","error"); _njStep=3; renderNewJapStep(); }
 
 function showAddHModal() {
   Modal.open(`<div class='modal-title'>Nouvel Héritier</div>
@@ -185,7 +215,7 @@ function showAddHModal() {
     </div>
     <div class='form-group'><label class="form-label" style="text-transform:uppercase">Biens déjà reçus (€)</label><input id="ha-rec" class="form-input" type="number" placeholder="0" value="0" /></div>
     
-    <label class="form-label" style="text-transform:uppercase">Enfant(s)</label>
+    <label class="form-label" style="text-transform:uppercase">Enfant(s) de l'héritier</label>
     <div id="ha-enfants-container" class="mb-8"></div>
     <button class="btn btn-ghost btn-sm w-full mb-16" style="border:1px dashed var(--border)" onclick="uiAddEnfant()">+ Ajouter un enfant</button>
 
@@ -195,40 +225,28 @@ function showAddHModal() {
 
 function uiAddEnfant() {
   const c = document.getElementById("ha-enfants-container");
-  const div = document.createElement("div");
-  div.className = "flex gap-8 mb-8 align-center enfant-row";
-  div.innerHTML = `
-    <input class="form-input" style="flex:1" placeholder="Nom/Prénom" />
-    <input class="form-input" style="flex:1" placeholder="Email ou Tél" />
-    <button class="btn btn-sm btn-danger" style="padding:4px 8px" onclick="this.parentElement.remove()">×</button>
-  `;
+  const div = document.createElement("div"); div.className = "flex gap-8 mb-8 align-center enfant-row";
+  div.innerHTML = `<input class="form-input" style="flex:1" placeholder="Nom/Prénom" /><input class="form-input" style="flex:1" placeholder="Email ou Tél" /><button class="btn btn-sm btn-danger" style="padding:4px 8px" onclick="this.parentElement.remove()">×</button>`;
   c.appendChild(div);
 }
 
 function saveH() {
   const nom = document.getElementById("ha-nom").value.trim();
   if(!nom) return toast("Nom requis", "error");
-  
   const enfantsArr = [];
   document.querySelectorAll('.enfant-row').forEach(r => {
     const inputs = r.querySelectorAll('input');
-    const n = inputs[0].value.trim();
-    const c = inputs[1].value.trim();
+    const n = inputs[0].value.trim(); const c = inputs[1].value.trim().toLowerCase();
     if(n || c) enfantsArr.push({nom: n, contact: c});
   });
 
-  _nj.herit.push({
-    id: uid(), nom: nom, email: document.getElementById("ha-email").value.trim(),
-    role: document.getElementById("ha-role").value,
-    parts: parseFloat(document.getElementById("ha-parts").value)||1,
-    recus: parseFloat(document.getElementById("ha-rec").value)||0,
-    enfants: enfantsArr
-  });
+  _nj.herit.push({ id: uid(), nom: nom, email: document.getElementById("ha-email").value.trim().toLowerCase(), role: document.getElementById("ha-role").value, parts: parseFloat(document.getElementById("ha-parts").value)||1, recus: parseFloat(document.getElementById("ha-rec").value)||0, enfants: enfantsArr });
   Modal.close(); renderNewJapStep();
 }
 function finNJ(){ Store.saveJap(_nj); toast("JAP créé !"); Router.go("/jap/"+_nj.id); }
 
 /* ── VIEW DASHBOARD ──────────────────────────────────────────── */
+// ... (editInfosModal and saveInfos are kept identical)
 function editInfosModal(id) {
   const j=Store.getJap(id);
   Modal.open(`<div class='modal-title'>Modifier la succession</div>
@@ -244,6 +262,8 @@ function saveInfos(id) {
 
 function renderDashboard({id}){
   const j=Store.getJap(id); if(!j)return Router.go("/");
+  const userRole = getTargetHeir(j); // {type: 'heritier'|'enfant'|'autre', heir: Object|null}
+
   const s=STATUTS[j.statut]||STATUTS.prep;
   document.getElementById("app").innerHTML=`<div class='topbar'><button class='topbar-back' onclick='Router.go("/")'>←</button><div class='topbar-title'>Tableau de bord</div><span class='jap-item-status ${s.css}'>${s.label}</span></div>
   <div class='view'>
@@ -255,21 +275,31 @@ function renderDashboard({id}){
     </div>
   <div class='card mb-24 card-clickable' onclick='navigator.clipboard.writeText("${j.code}");toast("Code Copié !")'><div class='flex align-center justify-between'><div><div class='text-muted text-small'>Code d'invitation</div><div class='fw-700' style='font-size:16px;letter-spacing:1px'>${j.code}</div></div><span style='font-size:22px'>📋</span></div></div>
   
-  <div class='section-title'>Actions</div>
+  <div class='section-title'>Actions Administrateur</div>
   <div style='display:grid;gap:10px'>
     <button class='btn btn-primary' onclick='Router.go("/jap/${id}/inv")'>📸 Inventaire (${(j.biens||[]).length})</button>
     ${j.statut==="partage"?`<button class='btn btn-gold' onclick='toast("Lien de résultats copié ! 📋")'>💌 Partager le résultat aux héritiers</button>`:((j.biens||[]).length?`<button class='btn btn-gold' onclick='lancerS("${id}")'>💌 Envoyer invitations aux héritiers</button>`:"")}
-    ${j.statut==="souhaits"||j.statut==="prep"?`<button class='btn btn-ghost' style="border:1px solid var(--violet)" onclick='Router.go("/jap/${id}/wish")'>❤️ Ma liste de souhaits (Héritier)</button>`:""}
-    ${j.statut==="souhaits"?`<button class='btn btn-primary' onclick='Router.go("/jap/${id}/partage")'>🎲 Lancer le Partage</button>`:""}
-    ${j.statut==="partage"?`<button class='btn btn-primary' onclick='Router.go("/jap/${id}/partage")'>🏆 Résultats du partage</button>`:""}
+    ${j.statut==="souhaits"?`<button class='btn btn-primary' onclick='Router.go("/jap/${id}/partage")'>🎲 Lancer l'Algorithme de Partage</button>`:""}
+  </div>
+  
+  <div class='section-title mt-24 mb-16'>Espace Personnel (${userRole.type.toUpperCase()})</div>
+  <div style='display:grid;gap:10px'>
+    ${(userRole.type==='heritier' || userRole.type==='enfant') && (j.statut==="souhaits"||j.statut==="prep") ? 
+      `<button class='btn btn-ghost' style="border:1px solid var(--violet)" onclick='Router.go("/jap/${id}/wish")'>❤️ Panier de Souhaits ${userRole.type==='enfant' ? `(Parent: ${esc(userRole.heir.nom)})` : ''}</button>` 
+      : (userRole.type==='autre' ? `<div class='empty-state text-small' style='padding:12px'>Les souhaits sont réservés aux héritiers.</div>` : '')}
+    ${j.statut==="partage" ? `<button class='btn btn-primary' onclick='Router.go("/jap/${id}/partage")'>🏆 Consulter les résultats</button>` : ""}
   </div>
   
   <div class='section-title mt-24'>Héritiers Configurés</div>
-  ${(j.herit||[]).map(h=>`<div class='heir-chip'><div class='heir-chip-avatar'>${ini(h.nom)}</div><div class='heir-chip-info'><div class='fw-700'>${esc(h.nom)} <span class="text-small text-muted" style="font-weight:normal">(${h.parts||1} part)</span></div><div class='text-muted text-small'>Biens reçus: ${fmt(h.recus||0)} | ${h.role}</div></div></div>`).join("")}</div>`;
+  ${(j.herit||[]).map(h=>`<div class='heir-chip'><div class='heir-chip-avatar'>${ini(h.nom)}</div><div class='heir-chip-info'><div class='fw-700'>${esc(h.nom)} <span class="text-small text-muted" style="font-weight:normal">(${h.parts||1} part)</span></div><div class='text-muted text-small'>Biens reçus: ${fmt(h.recus||0)} | ${h.role}</div></div></div>`).join("")}
+  
+  <button class='btn btn-danger btn-sm mt-32 mb-24 w-full' onclick='if(confirm("Supprimer définitivement la succession ?")){Store.deleteJap("${id}");Router.go("/");}'>🗑️ Supprimer cette succession</button>
+  </div>`;
 }
 function lancerS(id){ const j=Store.getJap(id); j.statut="souhaits"; Store.saveJap(j); toast("Invitations envoyées !"); renderDashboard({id}); }
 
 /* ── VIEW INVENTAIRE ─────────────────────────────────────────── */
+// (Keep rendering inventory the exact same)
 let tmpPhotoUrl = null;
 function handlePhotoUpload(input) {
   if (input.files && input.files[0]) {
@@ -306,82 +336,93 @@ function delB(id,i){ const j=Store.getJap(id); j.biens.splice(i,1); Store.saveJa
 
 /* ── VIEW SOUHAITS TRIABLE ───────────────────────────────────── */
 function renderSouhaits({id}){
-  const j=Store.getJap(id); const h=j.herit[0]||{}; const s=h.souhaits||[]; // s is an array of bien IDs
-  const b=j.biens||[];
+  const j=Store.getJap(id); 
+  const userRole = getTargetHeir(j);
+  if (userRole.type === 'autre') {
+    toast("Membres simples n'ont pas de liste de souhaits.", "warning");
+    Router.go(`/jap/${id}`);
+    return;
+  }
+  
+  const h = userRole.heir;
+  const isEnfant = (userRole.type === 'enfant');
+  const s = h.souhaits||[]; // array of IDs
+  const b = j.biens||[];
   
   // CALCULS SOULTE THEORIQUE
   const totalBiens = b.reduce((a,c)=>a+(parseFloat(c.val)||0),0);
-  const totalRecus = j.herit.reduce((a,c)=>a+(parseFloat(c.recus)||0),0);
+  const totalRecus = (j.herit||[]).reduce((a,c)=>a+(parseFloat(c.recus)||0),0);
   const actifNet = totalBiens + totalRecus;
-  const partsCumul = j.herit.reduce((a,c)=>a+(parseFloat(c.parts)||1),0);
+  const partsCumul = (j.herit||[]).reduce((a,c)=>a+(parseFloat(c.parts)||1),0);
   const valParPart = partsCumul>0 ? actifNet/partsCumul : 0;
-  const myPartTheo = valParPart * (h.parts||1);
+  const myPartTheo = valParPart * (parseFloat(h.parts)||1);
   const wishVal = s.reduce((a, bid) => { const bien = b.find(x=>x.id===bid); return a+(bien?(parseFloat(bien.val)||0):0); }, 0);
   
-  // Si je gagne tous mes choix + mes biens reçus antérieurs -> j'aurai wishVal + h.recus
-  // Ma soulte théorique (attention) = (wishVal + h.recus) - myPartTheo
-  // >0 = je devrai payer. <0 = je devrai recevoir.
   const diffTheo = (wishVal + (parseFloat(h.recus)||0)) - myPartTheo;
   let soulteColor = "var(--text-color)";
   let txtSoulte = `Valeur cible atteinte ✓`;
-  if (diffTheo > (j.seuil||200)) {
-     soulteColor = "#ef4444"; // rouge
-     txtSoulte = `⚠️ Vous devrez verser une soulte estimée à ${fmt(diffTheo)}`;
-  } else if (diffTheo < -(j.seuil||200)) {
-     soulteColor = "var(--gold)"; 
-     txtSoulte = `Vous devriez recevoir une soulte de ${fmt(-diffTheo)}`;
-  }
+  if (diffTheo > (j.seuil||200)) { soulteColor = "#ef4444"; txtSoulte = `⚠️ Vous devrez verser une soulte estimée à ${fmt(diffTheo)}`; }
+  else if (diffTheo < -(j.seuil||200)) { soulteColor = "var(--gold)"; txtSoulte = `Vous devriez recevoir une soulte de ${fmt(-diffTheo)}`; }
 
-  // HTML RENDERING
   const rankHtml = s.map((bid, i) => {
     const obj = b.find(x=>x.id===bid); if(!obj) return "";
     return `<div class='bien-list-item' style='gap:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05)'>
       <div style='font-size:12px;font-weight:700;color:var(--gold);width:16px;text-align:center'>${i+1}</div>
       ${obj.photo?`<img src="${obj.photo}" style="width:40px;height:40px;border-radius:8px;object-fit:cover" />`:`<div class='bien-list-emoji' style="width:40px;height:40px;">${catE(obj.cat)}</div>`}
       <div class='flex-1'><div style='font-weight:600;font-size:14px'>${esc(obj.nom)}</div><div class='text-muted text-small'>${fmt(obj.val)}</div></div>
-      <div style='display:flex;flex-direction:column;gap:4px'>
-         ${i>0?`<button class='btn btn-ghost btn-sm' style='padding:2px 8px;font-size:10px' onclick='moveW("${id}",${i},-1)'>▲</button>`:`<div style='height:20px'></div>`}
-         ${i<s.length-1?`<button class='btn btn-ghost btn-sm' style='padding:2px 8px;font-size:10px' onclick='moveW("${id}",${i},1)'>▼</button>`:`<div style='height:20px'></div>`}
-      </div>
-      <button class='btn btn-sm btn-ghost' style="color:var(--text-muted);font-size:18px" onclick='togW("${id}","${bid}")'>×</button>
+      ${!isEnfant ? `<div style='display:flex;flex-direction:column;gap:4px'>
+         ${i>0?`<button class='btn btn-ghost btn-sm' style='padding:2px 8px;font-size:10px' onclick='moveW("${id}","${h.id}",${i},-1)'>▲</button>`:`<div style='height:20px'></div>`}
+         ${i<s.length-1?`<button class='btn btn-ghost btn-sm' style='padding:2px 8px;font-size:10px' onclick='moveW("${id}","${h.id}",${i},1)'>▼</button>`:`<div style='height:20px'></div>`}
+      </div>` : `<div class="text-small text-muted" style="width:40px;text-align:center">Lock</div>`}
+      <button class='btn btn-sm btn-ghost' style="color:var(--text-muted);font-size:18px" onclick='togW("${id}","${h.id}","${bid}")'>×</button>
     </div>`;
   }).join("");
 
   const availHtml = b.filter(x=>!s.includes(x.id)).map(x=>{
-    return `<div class='bien-list-item card-clickable' onclick='togW("${id}","${x.id}")' style='gap:12px'>
+    return `<div class='bien-list-item card-clickable' onclick='togW("${id}","${h.id}","${x.id}")' style='gap:12px'>
       ${x.photo?`<img src="${x.photo}" style="width:40px;height:40px;border-radius:8px;object-fit:cover" />`:`<div class='bien-list-emoji' style="width:40px;height:40px;">${catE(x.cat)}</div>`}
       <div class='flex-1'><b>${esc(x.nom)}</b><br><span class="text-gold fw-700">${fmt(x.val)}</span></div>
       <div class="text-muted" style="font-size:20px">+</div>
     </div>`;
   }).join("");
 
-  document.getElementById("app").innerHTML=`<div class='topbar'><button class='topbar-back' onclick='Router.go("/jap/${id}")'>←</button><div class='topbar-title'>Ma liste triée</div></div>
+  document.getElementById("app").innerHTML=`<div class='topbar'><button class='topbar-back' onclick='Router.go("/jap/${id}")'>←</button><div class='topbar-title'>${isEnfant ? `Panier (${esc(h.nom)})` : "Ma liste triée"}</div></div>
   <div class='view'>
+    ${isEnfant ? `<div class="card mb-16" style="background:var(--violet);color:white;font-size:13px"><div class="fw-700">Vous agissez pour ${esc(h.nom)}</div><div>Vous pouvez ajouter/retirer des objets au panier, mais seul l'héritier peut modifier l'ordre des priorités.</div></div>` : ''}
     <div class="card mb-24">
       <div class="flex align-center justify-between mb-8">
-        <span class="text-muted text-small">Ma Part Théorique :</span>
+        <span class="text-muted text-small">Part Théorique (${h.parts||1} part) :</span>
         <span class="fw-700">${fmt(myPartTheo)}</span>
       </div>
       <div class="flex align-center justify-between mb-8">
-        <span class="text-muted text-small">Valeur de ma liste :</span>
+        <span class="text-muted text-small">Valeur du panier :</span>
         <span class="fw-700">${fmt(wishVal)}</span>
       </div>
       <div class="divider"></div>
       <div style="color:${soulteColor};font-weight:600;font-size:13px;text-align:center">${txtSoulte}</div>
     </div>
     
-    <div class='section-title'>1. Mes choix par ordre de priorité</div>
+    <div class='section-title'>1. Choix du panier</div>
     <div class="mb-24">${s.length ? rankHtml : `<div class='empty-state text-small'>Sélectionnez des biens ci-dessous</div>`}</div>
     
     <div class='section-title'>2. Tous les biens disponibles</div>
     <div class="mb-24">${availHtml || `<div class='text-muted text-center text-small mt-8'>Tous les biens ont été sélectionnés.</div>`}</div>
     
-    <button class='btn btn-primary w-full' onclick='Router.go("/jap/${id}")'>✅ Enregistrer ma liste</button>
+    <button class='btn btn-primary w-full' onclick='Router.go("/jap/${id}")'>✅ Enregistrer ${isEnfant?'le panier':'ma liste'}</button>
   </div>`;
 }
 
-function togW(id, bid){ const j=Store.getJap(id); const h=j.herit[0]; if(!h.souhaits)h.souhaits=[]; const idx=h.souhaits.indexOf(bid); if(idx>=0)h.souhaits.splice(idx,1); else h.souhaits.push(bid); Store.saveJap(j); renderSouhaits({id}); }
-function moveW(id, idx, dir){ const j=Store.getJap(id); const s=j.herit[0].souhaits; const n=idx+dir; if(n<0||n>=s.length)return; [s[idx], s[n]]=[s[n], s[idx]]; Store.saveJap(j); renderSouhaits({id}); }
+function togW(id, hId, bid){ 
+  const j=Store.getJap(id); const h=j.herit.find(x=>x.id===hId); 
+  if(!h.souhaits)h.souhaits=[]; const idx=h.souhaits.indexOf(bid); 
+  if(idx>=0)h.souhaits.splice(idx,1); else h.souhaits.push(bid); 
+  Store.saveJap(j); renderSouhaits({id}); 
+}
+function moveW(id, hId, idx, dir){ 
+  const j=Store.getJap(id); const h=j.herit.find(x=>x.id===hId); 
+  const s=h.souhaits; const n=idx+dir; if(n<0||n>=s.length)return; 
+  [s[idx], s[n]]=[s[n], s[idx]]; Store.saveJap(j); renderSouhaits({id}); 
+}
 
 /* ── VIEW PARTAGE & RESULTAT ─────────────────────────────────── */
 function renderPartage({id}){
