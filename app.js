@@ -1,5 +1,5 @@
 /* ================================================================
-   JAP — Le Jour d'Après | app.js V4
+   JAP — Le Jour d'Après | app.js V5
 ================================================================ */
 'use strict';
 
@@ -114,7 +114,7 @@ function doJoin(){
 
 /* ── VUE NOUVEAU JAP ─────────────────────────────────────────── */
 let _njStep=1, _nj={};
-function renderNewJap(){ _nj={id:uid(),code:"JAP_"+uid().toUpperCase(),createur:{},herit:[],biens:[],statut:"prep"}; _njStep=1; renderNewJapStep(); }
+function renderNewJap(){ _nj={id:uid(),code:"JAP_"+uid().toUpperCase(),createur:{},admins:[],herit:[],biens:[],statut:"prep"}; _njStep=1; renderNewJapStep(); }
 function renderNewJapStep(){
   const app=document.getElementById("app");
   const sHtml=`<div class='steps'>${["Créateur", "Succession","Héritiers","Fin"].map((s,i)=>{
@@ -172,7 +172,6 @@ function renderNewJapStep(){
   }
   app.innerHTML=top+`<div class='view'>${sHtml}${body}</div>`;
 
-  // Dynamic hint in Step 1
   if(_njStep===1) {
     document.getElementById('nj-c-lie').addEventListener('change', function(e) {
       const hint = document.getElementById('nj-c-hint');
@@ -193,9 +192,9 @@ function njS1(){
   if(!no || !pr || !em) return toast("Nom, Prénom et Email requis", "error");
 
   _nj.createur = {nom:no, prenom:pr, email:em, tel:te, adresse:ad, lien:li};
+  _nj.admins = [em]; // creator is admin
   Store.setUser({email: em, nom: pr+' '+no});
 
-  // Auto add as heir if lien === heritier
   if(li === 'heritier') {
     if(!_nj.herit.find(h=>h.email===em)) {
        _nj.herit.push({id:uid(), nom: pr+' '+no, email: em, role:'ayant_droit', parts:1, recus:0, enfants:[]});
@@ -246,7 +245,6 @@ function saveH() {
 function finNJ(){ Store.saveJap(_nj); toast("JAP créé !"); Router.go("/jap/"+_nj.id); }
 
 /* ── VIEW DASHBOARD ──────────────────────────────────────────── */
-// ... (editInfosModal and saveInfos are kept identical)
 function editInfosModal(id) {
   const j=Store.getJap(id);
   Modal.open(`<div class='modal-title'>Modifier la succession</div>
@@ -260,8 +258,19 @@ function saveInfos(id) {
   if(j.defunt) { Store.saveJap(j); Modal.close(); toast('Sauvegardé'); renderDashboard({id}); }
 }
 
+function mkAdmin(id, email) {
+  const j = Store.getJap(id);
+  if(!j.admins) j.admins = [];
+  if(!j.admins.includes(email)) j.admins.push(email);
+  Store.saveJap(j);
+  toast("Promu Administrateur !");
+  renderDashboard({id});
+}
+
 function renderDashboard({id}){
   const j=Store.getJap(id); if(!j)return Router.go("/");
+  const user = Store.getUser();
+  const isAdmin = (j.admins||[]).includes((user.email||"").toLowerCase());
   const userRole = getTargetHeir(j); // {type: 'heritier'|'enfant'|'autre', heir: Object|null}
 
   const s=STATUTS[j.statut]||STATUTS.prep;
@@ -271,35 +280,38 @@ function renderDashboard({id}){
       <div class='card-title' style='font-size:20px'>⚖️ ${esc(j.defunt)}</div>
       <div class='text-muted mt-8'>Notaire: ${esc(j.notaire||'Non renseigné')}</div>
       <div class='text-gold fw-700 mt-8 mb-8'>Seuil soulte: ${fmt(j.seuil||200)}</div>
-      ${j.statut==="prep"?"<button class='btn btn-ghost btn-sm' onclick='editInfosModal(\""+id+"\")'>✏️ Modifier</button>":""}
+      ${isAdmin && j.statut==="prep"?"<button class='btn btn-ghost btn-sm' onclick='editInfosModal(\""+id+"\")'>✏️ Modifier</button>":""}
     </div>
   <div class='card mb-24 card-clickable' onclick='navigator.clipboard.writeText("${j.code}");toast("Code Copié !")'><div class='flex align-center justify-between'><div><div class='text-muted text-small'>Code d'invitation</div><div class='fw-700' style='font-size:16px;letter-spacing:1px'>${j.code}</div></div><span style='font-size:22px'>📋</span></div></div>
   
+  ${isAdmin ? `
   <div class='section-title'>Actions Administrateur</div>
   <div style='display:grid;gap:10px'>
-    <button class='btn btn-primary' onclick='Router.go("/jap/${id}/inv")'>📸 Inventaire (${(j.biens||[]).length})</button>
     ${j.statut==="partage"?`<button class='btn btn-gold' onclick='toast("Lien de résultats copié ! 📋")'>💌 Partager le résultat aux héritiers</button>`:((j.biens||[]).length?`<button class='btn btn-gold' onclick='lancerS("${id}")'>💌 Envoyer invitations aux héritiers</button>`:"")}
     ${j.statut==="souhaits"?`<button class='btn btn-primary' onclick='Router.go("/jap/${id}/partage")'>🎲 Lancer l'Algorithme de Partage</button>`:""}
-  </div>
+  </div>` : ""}
   
-  <div class='section-title mt-24 mb-16'>Espace Personnel (${userRole.type.toUpperCase()})</div>
+  <div class='section-title mt-24 mb-16'>Espace Personnel (${isAdmin ? 'ADMINISTRATEUR' : userRole.type.toUpperCase()})</div>
   <div style='display:grid;gap:10px'>
+    <button class='btn btn-primary' onclick='Router.go("/jap/${id}/inv")'>📸 Consulter l'Inventaire (${(j.biens||[]).length})</button>
     ${(userRole.type==='heritier' || userRole.type==='enfant') && (j.statut==="souhaits"||j.statut==="prep") ? 
       `<button class='btn btn-ghost' style="border:1px solid var(--violet)" onclick='Router.go("/jap/${id}/wish")'>❤️ Panier de Souhaits ${userRole.type==='enfant' ? `(Parent: ${esc(userRole.heir.nom)})` : ''}</button>` 
-      : (userRole.type==='autre' ? `<div class='empty-state text-small' style='padding:12px'>Les souhaits sont réservés aux héritiers.</div>` : '')}
+      : ''}
     ${j.statut==="partage" ? `<button class='btn btn-primary' onclick='Router.go("/jap/${id}/partage")'>🏆 Consulter les résultats</button>` : ""}
   </div>
   
-  <div class='section-title mt-24'>Héritiers Configurés</div>
-  ${(j.herit||[]).map(h=>`<div class='heir-chip'><div class='heir-chip-avatar'>${ini(h.nom)}</div><div class='heir-chip-info'><div class='fw-700'>${esc(h.nom)} <span class="text-small text-muted" style="font-weight:normal">(${h.parts||1} part)</span></div><div class='text-muted text-small'>Biens reçus: ${fmt(h.recus||0)} | ${h.role}</div></div></div>`).join("")}
+  <div class='section-title mt-24'>Membres & Héritiers</div>
+  ${(j.herit||[]).map(h=>{
+    const estAdmin = (j.admins||[]).includes((h.email||"").toLowerCase());
+    return `<div class='heir-chip'><div class='heir-chip-avatar'>${ini(h.nom)}</div><div class='heir-chip-info'><div class='fw-700'>${esc(h.nom)} ${estAdmin?`<span style="color:var(--gold);font-size:12px;margin-left:4px">👑 Admin</span>`:''} <span class="text-small text-muted" style="font-weight:normal;margin-left:4px">(${h.parts||1} part)</span></div><div class='text-muted text-small'>Biens reçus: ${fmt(h.recus||0)} | ${h.role}</div></div>${isAdmin && !estAdmin ? `<button class="btn btn-sm btn-ghost" style="font-size:10px;padding:4px 8px;margin-left:8px;" onclick="mkAdmin('${id}', '${esc(h.email)}')">Mettre Admin</button>` : ''}</div>`
+  }).join("")}
   
-  <button class='btn btn-danger btn-sm mt-32 mb-24 w-full' onclick='if(confirm("Supprimer définitivement la succession ?")){Store.deleteJap("${id}");Router.go("/");}'>🗑️ Supprimer cette succession</button>
+  ${isAdmin ? `<button class='btn btn-danger btn-sm mt-32 mb-24 w-full' onclick='if(confirm("Supprimer définitivement la succession ?")){Store.deleteJap("${id}");Router.go("/");}'>🗑️ Supprimer cette succession</button>` : ""}
   </div>`;
 }
 function lancerS(id){ const j=Store.getJap(id); j.statut="souhaits"; Store.saveJap(j); toast("Invitations envoyées !"); renderDashboard({id}); }
 
 /* ── VIEW INVENTAIRE ─────────────────────────────────────────── */
-// (Keep rendering inventory the exact same)
 let tmpPhotoUrl = null;
 function handlePhotoUpload(input) {
   if (input.files && input.files[0]) {
@@ -314,13 +326,17 @@ function runAIEval() {
 
 function renderInventaire({id}){
   const j=Store.getJap(id); const b=j.biens||[];
+  const isAdmin = (j.admins||[]).includes(Store.getUser().email.toLowerCase());
   const valTotal = b.reduce((a, c) => a + (parseFloat(c.val)||0), 0);
+  
   document.getElementById("app").innerHTML=`<div class='topbar'><button class='topbar-back' onclick='Router.go("/jap/${id}")'>←</button><div class='topbar-title'>Inventaire</div></div>
-  <div class='view'><div class="wishlist-total mb-16"><div><div class="wishlist-total-label">V. Totale des Biens</div></div><div class="wishlist-total-value">${fmt(valTotal)}</div></div>
+  <div class='view'>
+  ${!isAdmin ? `<div class="card mb-16 text-small" style="background:rgba(255,255,255,0.05)">Seuls les administrateurs peuvent ajouter ou modifier l'inventaire.</div>` : ""}
+  <div class="wishlist-total mb-16"><div><div class="wishlist-total-label">V. Totale des Biens</div></div><div class="wishlist-total-value">${fmt(valTotal)}</div></div>
   ${b.length ? b.map((x,i)=>{
     const imgHtml = x.photo ? `<img src="${x.photo}" style="width:50px;height:50px;border-radius:10px;object-fit:cover;flex-shrink:0;" />` : `<div class='bien-list-emoji'>${catE(x.cat)}</div>`;
-    return `<div class='bien-list-item' style='gap:12px'>${imgHtml}<div class='bien-list-info'><b>${esc(x.nom)}</b><div class='text-muted text-small'>${catL(x.cat)}</div></div><div class="text-gold fw-700 mr-8">${fmt(x.val)}</div><button class='btn btn-sm btn-ghost' style='padding:6px;width:32px;height:32px' onclick='delB("${id}",${i})'>×</button></div>`;
-  }).join("") : `<div class="empty-state"><div class="empty-state-icon">📸</div><div class="empty-state-title">Aucun bien</div></div>`}</div><button class='fab' onclick='showAddB("${id}")'>+</button>`;
+    return `<div class='bien-list-item' style='gap:12px'>${imgHtml}<div class='bien-list-info'><b>${esc(x.nom)}</b><div class='text-muted text-small'>${catL(x.cat)}</div></div><div class="text-gold fw-700 mr-8">${fmt(x.val)}</div>${isAdmin ? `<button class='btn btn-sm btn-ghost' style='padding:6px;width:32px;height:32px' onclick='delB("${id}",${i})'>×</button>` : ''}</div>`;
+  }).join("") : `<div class="empty-state"><div class="empty-state-icon">📸</div><div class="empty-state-title">Aucun bien</div></div>`}</div>${isAdmin ? `<button class='fab' onclick='showAddB("${id}")'>+</button>` : ''}`;
 }
 function showAddB(id){ 
   tmpPhotoUrl = null;
