@@ -1,0 +1,245 @@
+JAP 
+ 
+1 
+Document hautement confidentiel – 12 juillet 2021 – Etienne et Francois Leborgne  
+ 
+ 
+Paris, 15 janvier 2022: « JAP », l’application qui simplifie l’héritage, à l'amiable et en toute équité.  
+Cette application disponible sur IOS et Android, se propose de gérer le processus de partage des biens 
+entre plusieurs héritiers. Il s’agit d’une sorte de « tricount » de l’héritage.  
+Il y a le jour terrible, le jour de la perte d’un être cher. Et puis il y a le jours d’après. Le jour où il faut 
+s’occuper d’une foule de tâches administratives. Parmi celles-ci, l’une d’entre-elle peut être 
+particulièrement éprouvante : le partage des biens qui s’accompagne malheureusement de nombreux 
+conflits familiaux.  
+L’intuition de JAP c’est que le sentiment de justice est la clé de la paix des familles. L’application 
+propose des processus de partages neutres et simples. La technologie permet de rendre l’exercice 
+beaucoup moins fastidieux. Un notaire ou un exécuteur testamentaire initie la succession. Les biens 
+sont listés, annotés et évalués par l’exécuteur testamentaire, le notaire, un commissaire-priseur ou 
+une autre personne désignée. Pour faire l’inventaire des biens il suffit de les prendre en photo depuis 
+l’application. Les héritiers les classent ensuite par ordre de préférence. Pour ajouter un bien à sa liste 
+de souhait, un « like » suffit. Pour classer ses souhaits, un simple réarrangement de l’ordre des photos 
+est suffisant. Enfin l’application attribue les biens, gère les conflits par tirage au sort et détermine les 
+montants compensatoires à verser aux héritiers les moins bien servis. Les tours de partage sont gérés 
+automatiquement. Si deux héritiers désirent le même objet, ils sont départagés par un tirage au sort. 
+L’héritier malchanceux se voit automatiquement attribuer son choix suivant. A l’issue du partage, un 
+protocole détaillé est disponible que les héritiers peuvent signer manuscritement afin d’éviter tout 
+litige futur.  
+Francois Leborgne, co-fondateur de l’entreprise explique d’où est venue l’idée de l’entreprise : « au 
+décès de notre grand-mère, j’ai été impressionné par la sérénité avec lequel mes parents et mes oncles 
+et tantes ont géré le partage de ses biens. Personne ne s’est senti lésé car les règles du jeu avaient été 
+précisément définies à l’avance.  Cependant la gestion en elle-même a été compliquée et a nécessité 
+beaucoup d’échanges d’e- mail, de photos, de fichiers excels. JAP intègre ces « règles du jeu » simple 
+et précises et facilite tout le processus. » 
+Paul, 50 ans a été convaincu par l’application : « au décès de Maman, nous sommes allés voir Maître 
+Jean, notre notaire, pour régler les questions d’héritage. Elle nous a conseillé d’utiliser JAP afin de 
+nous aider à vider la maison. Il y a eu quelques réticents au départ dans la famille mais on les a aidés 
+et finalement tout le monde a trouvé que le partage était très juste ».  
+L’application est en modèle « freemium » : le téléchargement est gratuit mais la version gratuite est 
+limitée à 10 biens pour l’administrateur. Pour passer en mode illimité il faudra débourser 20€ par 
+succession. Pour les invités la participation est toujours gratuite.  
+ 
+ 
+ 
+ 
+ 
+JAP 
+ 
+2 
+Document hautement confidentiel – 12 juillet 2021 – Etienne et Francois Leborgne  
+ 
+ 
+Questions fréquemment posées – utilisateurs 
+1- Concrètement, comment ça marche ? 
+- 
+Un utilisateur racine télécharge l’application sur le playstore Google ou sur l’Appstore Apple. 
+La version gratuite est idéale pour se familiariser avec le fonctionnement de l’application : 
+elle permet d’inviter un nombre illimité de personnes mais est limitée à dix biens.  Cet 
+utilisateur racine est un notaire ou un exécuteur testamentaire. 
+- 
+Afin de passer en version illimitée l’utilisateur racine doit acheter un « code succession » à 
+20€ sur le site Jap.fr. 
+- 
+Ce code permet à l’utilisateur racine d’inviter autant de personnes que désiré à la 
+succession. Pour chaque personne il doit renseigner un courriel. Il peut également définir 
+des héritiers d’héritiers. Il définit les rôles qui peuvent être cumulables 
+o Utilisateur racine : initie la succession, invite les membres, définit les rôles et le 
+montant de la soulte (100€ par défaut) 
+o Gestionnaire d’inventaire : la personne qui liste les biens 
+o Héritier 
+o Accès en lecture seule 
+o Expert : peut définir des valeurs pour les objets photographiés par le gestionnaire 
+d’inventaire 
+- 
+Le gestionnaire d’inventaire procède à la liste des biens. Pour cela il prend des photos des 
+objets via l’application. Il peut indiquer un titre, une description, une localisation dans le 
+logement (e.g. « cuisine »). Il peut indiquer une quantité dans le cas de lot (e.g. petites 
+cuillères). Il marque les objets susceptibles d’être de valeur afin que l’expert puisse procéder 
+à leur évaluation. 
+- 
+L’expert évalue les biens marqués par le gestionnaire d’inventaire.  
+- 
+Les héritiers reçoivent une invitation. Pour ajouter un bien à sa liste de souhait, un « like » 
+suffit. Pour classer ses souhaits, un simple réarrangement de l’ordre des photos est suffisant. 
+Chaque héritier peut inviter des personnes « invitées ». Ces personnes peuvent signaler leur 
+intérêt à la personne qui les a invités via un « pouce levé ». Les invités constituent des listes 
+d’intérêts hiérarchisables.  
+- 
+Le jour J, l’utilisateur racine lance l’événement et les tours de partage. Les montants à payer 
+sont calculés. Si deux héritiers désirent le même objet, ils sont départagés par un tirage au 
+sort. L’héritier malchanceux se voit automatiquement attribuer son choix suivant. 
+- 
+A l’issue du partage, un protocole détaillé est disponible que les héritiers peuvent signer 
+manuscritement afin d’éviter tout litige futur. 
+2- A quoi ressemble l’application ? 
+Cliquer ici pour découvrir l’application.  
+JAP 
+ 
+3 
+Document hautement confidentiel – 12 juillet 2021 – Etienne et Francois Leborgne  
+ 
+ 
+3- Combien ça coûte ? 
+L’application est « freemium » : le téléchargement est gratuit mais le nombre de produit qui peut 
+être chargé est limité à 10. Afin de pouvoir avoir un nombre illimité de produit, il faut acheter un 
+code succession sur le site jap.fr pour 20€. Ce site est valable pour une succession uniquement.  
+Une offre illimitée est disponible à l’attention des notaires pour un abonnement mensuel de 20€.  
+Questions fréquemment posées – interne JAP 
+1. Quel type d’application 
+HTML5 pour pouvoir être compatible laptop, IOS et Android 
+2. Quel coûts et quels revenus pour arriver au point mort ? 
+ 
+Il nous faut vendre 2500 codes succession à 20€ HT pour atteindre le point mort du développement 
+de l’application. 
+3. Comment atteindre vos clients ? 
+Nos clients principaux sont les notaires à qui nous souhaitons vendre un abonnement mensuel de 
+20€ pour un nombre illimité de succession. Pour 240€ par an HT ils remplissent leurs obligations 
+d’inventaire et de documentation du partage des biens.  
+Alternativement ils pourraient recommander l’application auprès des héritiers. Il semble cependant 
+qu’il faille avoir un certain niveau d’expertise incompressible pour manier l’application. Il faut 
+également une légitimité pour définir les rôles.  
+4. Quel âge ont les héritiers en moyenne ? 
+45% des héritiers ont moins de 60 ans. 25% moins de 50 ans.  
+Coûts
+Revenus
+App developement
+30.000
+         
+Codes succession 
+50.000
+         
+Communication 
+10.000
+         
+2500 codes succession vendus
+Juridique
+5.000
+            
+Divers
+5.000
+            
+Total
+50.000
+         
+Total
+50.000
+         
+JAP 
+ 
+4 
+Document hautement confidentiel – 12 juillet 2021 – Etienne et Francois Leborgne  
+ 
+ 
+Source : https://www.insee.fr/fr/statistiques/2868785?sommaire=2846529 
+34,8% des héritiers sont des personnes seules, 36% des couples sans enfant et 20,7% des couples 
+avec enfant.  
+ 
+T1A1 : Âge de la personne de référence des ménages héritiers, donataires et donateurs (en %
+En  %
+Types de transmission
+Héritiers
+Donataires
+Donateurs
+Ensemble
+Tranches d'âge de la personne de référence le jour de l'enquête
+Moins de 30 ans
+4,0
+6,2
+ns
+9,6
+De 30 à 39 ans
+8,1
+17,3
+ns
+15,6
+De 40 à 49 ans
+12,9
+24,5
+1,4
+18,9
+De 50 à 59 ans
+20,4
+18,8
+8,4
+17,6
+De 60 à 69 ans
+26,1
+19,6
+26,9
+17,9
+70 ans ou plus
+28,7
+13,5
+61,7
+20,5
+Ensemble
+100,0
+100,0
+100,0
+100,0
+Champ : ménages ordinaires résidant en France, y compris DOM (hors Mayotte). 
+Lecture : début 2015, 4 % des ménages héritiers (c'est à dire des ménages ayant reçu un héritage dans leur vie) ont moi
+Note : l'âge retenu est celui de la personne de référence à la date de l'enquête.
+Note : lorsque pour un calcul il y a moins de 20 réponses, les résultats ne sont pas significatifs. Ils sont donc remplacés
+Source : Insee, enquête Patrimoine 2014-15
+T1A3 : Répartition des ménages héritiers, donataires et donateurs selon le type de ménage (en %)
+En  %
+Types de transmission
+Héritiers
+Donataires
+Donateurs
+Ensemble
+Type de ménage
+Personne seule
+34,8
+27,7
+46,7
+35,1
+Famille monoparentale
+5,5
+6,1
+2,9
+9,0
+Couple sans enfants
+36,2
+29,1
+43,7
+26,0
+Couple avec enfant(s)
+20,7
+35,2
+4,7
+27,1
+Autre type de ménage
+2,9
+1,9
+2,0
+2,7
+Ensemble
+100,0
+100,0
+100,0
+100,0
+Champ : ménages ordinaires résidant en France, y compris DOM (hors Mayotte). 
+Lecture : début 2015, 36,2 % des ménages héritiers (c'est à dire des ménages ayant reçu un héritage dans leur vie) sont des couples sans enfant
+Note : lorsque pour un calcul il y a moins de 20 réponses, les résultats ne sont pas significatifs. Ils sont donc remplacés par le symbole ns.
+Source : Insee, enquête Patrimoine 2014-15
