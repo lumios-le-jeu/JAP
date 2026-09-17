@@ -5,19 +5,60 @@
 console.log("%c JAP v.0.1 ", "background: #8b5cf6; color: white; padding: 4px; border-radius: 4px;", "Application Initialized");
 
 /* ── STORE ───────────────────────────────────────────────────── */
+const supabaseUrl = "https://ucydckuzsbbfflbnxkkl.supabase.co";
+const supabaseKey = "sb_publishable_hbsg3nktIYOasu0Kld7Hpg_pp9zh9_C";
+const supabase = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+
 const Store = {
   _get(k,d=null){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},
   _set(k,v){localStorage.setItem(k,JSON.stringify(v));},
-  getJaps(){return this._get('jap_list',[]);},
-  saveJaps(j){this._set('jap_list',j);},
-  getJap(id){return this.getJaps().find(j=>j.id===id)||null;},
-  saveJap(jap){
-    const list=this.getJaps();
-    const i=list.findIndex(j=>j.id===jap.id);
-    if(i>=0)list[i]=jap;else list.unshift(jap);
-    this.saveJaps(list);
+  async getJaps(){
+    if(!supabase) return this._get('jap_list',[]);
+    const local = this._get('jap_list',[]);
+    const ids = local.map(j=>j.id);
+    if(ids.length === 0) return [];
+    const { data } = await supabase.from('japs').select('data').in('id', ids);
+    if(data) {
+      const remote = data.map(d=>d.data);
+      this._set('jap_list', remote);
+      return remote;
+    }
+    return local;
   },
-  deleteJap(id){this.saveJaps(this.getJaps().filter(j=>j.id!==id));},
+  async saveJaps(j){this._set('jap_list',j);},
+  async getJap(id){
+    if(supabase) {
+      const { data } = await supabase.from('japs').select('data').eq('id', id).single();
+      if(data) return data.data;
+    }
+    return this._get('jap_list',[]).find(j=>j.id===id)||null;
+  },
+  async getJapByCode(code){
+    if(supabase) {
+      const { data } = await supabase.from('japs').select('data').eq('code', code).single();
+      if(data) {
+        // Also save it locally so getJaps() finds it
+        const list = this._get('jap_list',[]);
+        if(!list.find(x=>x.id===data.data.id)) { list.unshift(data.data); this._set('jap_list', list); }
+        return data.data;
+      }
+    }
+    return this._get('jap_list',[]).find(j=>j.code===code)||null;
+  },
+  async saveJap(jap){
+    const list = this._get('jap_list',[]);
+    const i = list.findIndex(j=>j.id===jap.id);
+    if(i>=0) list[i]=jap; else list.unshift(jap);
+    this._set('jap_list', list);
+    
+    if(supabase) {
+      await supabase.from('japs').upsert({ id: jap.id, code: jap.code, data: jap });
+    }
+  },
+  async deleteJap(id){
+    this._set('jap_list', this._get('jap_list',[]).filter(j=>j.id!==id));
+    if(supabase) await supabase.from('japs').delete().eq('id', id);
+  },
   getUser(){return this._get('jap_user',{email:'', nom:''});},
   setUser(u){this._set('jap_user',u);},
 };
@@ -57,7 +98,7 @@ const Router={
     }
     return null;
   },
-  dispatch(){ Modal.close(); const r=this.match(location.hash||'#/'); const app=document.getElementById('app'); if(r){app.innerHTML='';r.fn(r.params);}else{app.innerHTML='<div class="view"><div class="empty-state">Introuvable</div></div>';} },
+  async dispatch(){ Modal.close(); const r=this.match(location.hash||'#/'); const app=document.getElementById('app'); if(r){app.innerHTML='<div class="view"><div class="empty-state">Chargement...</div></div>'; await r.fn(r.params);}else{app.innerHTML='<div class="view"><div class="empty-state">Introuvable</div></div>';} },
   init(){window.addEventListener('hashchange',()=>this.dispatch());this.dispatch();},
 };
 
@@ -73,8 +114,8 @@ function getTargetHeir(jap) {
 }
 
 /* ── VUE ACCUEIL ─────────────────────────────────────────────── */
-function renderWelcome(){
-  const japs=Store.getJaps(); const user=Store.getUser();
+async function renderWelcome(){
+  const japs=await Store.getJaps(); const user=Store.getUser();
   const list=japs.length?japs.map(j=>{
     const s=STATUTS[j.statut]||STATUTS.prep;
     return `<div class='jap-item card-clickable' onclick='Router.go("/jap/${j.id}")'>
@@ -103,10 +144,10 @@ function showJoin(){
     <div class="form-group"><label class="form-label">Votre Email d'identification</label><input id='join-email' class='form-input mb-16' type='email' placeholder='votre@email.com' value='${Store.getUser().email||""}' /></div>
     <button class='btn btn-primary' onclick='doJoin()'>Accéder</button>`);
 }
-function doJoin(){
+async function doJoin(){
   const c=document.getElementById('join-code').value.trim().toUpperCase();
   const email=document.getElementById('join-email').value.trim().toLowerCase();
-  const j=Store.getJaps().find(x=>x.code===c);
+  const j=await Store.getJapByCode(c);
   if(!email) return toast("Email requis pour s'identifier", "warning");
   if(j){
     Store.setUser({email: email}); Modal.close(); Router.go('/jap/'+j.id);
@@ -224,8 +265,8 @@ function showAddHModal() {
   `);
 }
 
-function showEditHModal(japId, hId = null) {
-  const j = Store.getJap(japId);
+async function showEditHModal(japId, hId = null) {
+  const j = await Store.getJap(japId);
   const h = hId ? j.herit.find(x => x.id === hId) : {nom:'', email:'', role:'ayant_droit', parts:1, recus:0, enfants:[]};
   
   const enfHtml = (h.enfants||[]).map(e => `
@@ -259,14 +300,14 @@ function showEditHModal(japId, hId = null) {
   `);
 }
 
-function uiAddEnfant() {
+async function uiAddEnfant() {
   const c = document.getElementById("ha-enfants-container");
   const div = document.createElement("div"); div.className = "flex gap-8 mb-8 align-center enfant-row";
   div.innerHTML = `<input class="form-input" style="flex:1" placeholder="Nom/Prénom" /><input class="form-input" style="flex:1" placeholder="Email ou Tél" /><button class="btn btn-sm btn-danger" style="padding:4px 8px" onclick="this.parentElement.remove()">×</button>`;
   c.appendChild(div);
 }
 
-function saveH() {
+async function saveH() {
   const nom = document.getElementById("ha-nom").value.trim();
   if(!nom) return toast("Nom requis", "error");
   const enfantsArr = [];
@@ -280,7 +321,7 @@ function saveH() {
   Modal.close(); renderNewJapStep();
 }
 
-function saveEditH(japId, hId) {
+async function saveEditH(japId, hId) {
   const nom = document.getElementById("ha-nom").value.trim();
   if(!nom) return toast("Nom requis", "error");
   const enfantsArr = [];
@@ -290,7 +331,7 @@ function saveEditH(japId, hId) {
     if(n || c) enfantsArr.push({nom: n, contact: c});
   });
 
-  const j = Store.getJap(japId);
+  const j = await Store.getJap(japId);
   if (!j.herit) j.herit = [];
   
   const hData = { 
@@ -313,39 +354,39 @@ function saveEditH(japId, hId) {
     j.herit.push(hData);
   }
 
-  Store.saveJap(j);
+  await Store.saveJap(j);
   Modal.close();
   toast(hId ? "Héritier modifié" : "Héritier ajouté");
   renderDashboard({id: japId});
 }
 
-function finNJ(){ Store.saveJap(_nj); toast("JAP créé !"); Router.go("/jap/"+_nj.id); }
+async function finNJ(){ await Store.saveJap(_nj); toast("JAP créé !"); Router.go("/jap/"+_nj.id); }
 
 /* ── VIEW DASHBOARD ──────────────────────────────────────────── */
-function editInfosModal(id) {
-  const j=Store.getJap(id);
+async function editInfosModal(id) {
+  const j=await Store.getJap(id);
   Modal.open(`<div class='modal-title'>Modifier la succession</div>
     <input id='ei-def' class='form-input mb-8' placeholder='Défunt' value='${esc(j.defunt)}' />
     <input id='ei-not' class='form-input mb-8' placeholder='Notaire' value='${esc(j.notaire)}' />
     <input id='ei-sou' class='form-input mb-16' type='number' placeholder='Seuil soulte' value='${j.seuil||200}' />
     <button class='btn btn-primary' onclick='saveInfos("${id}")'>Enregistrer</button>`);
 }
-function saveInfos(id) {
-  const j=Store.getJap(id); j.defunt=document.getElementById('ei-def').value.trim(); j.notaire=document.getElementById('ei-not').value.trim(); j.seuil=document.getElementById('ei-sou').value;
-  if(j.defunt) { Store.saveJap(j); Modal.close(); toast('Sauvegardé'); renderDashboard({id}); }
+async function saveInfos(id) {
+  const j=await Store.getJap(id); j.defunt=document.getElementById('ei-def').value.trim(); j.notaire=document.getElementById('ei-not').value.trim(); j.seuil=document.getElementById('ei-sou').value;
+  if(j.defunt) { await Store.saveJap(j); Modal.close(); toast('Sauvegardé'); renderDashboard({id}); }
 }
 
-function mkAdmin(id, email) {
-  const j = Store.getJap(id);
+async function mkAdmin(id, email) {
+  const j = await Store.getJap(id);
   if(!j.admins) j.admins = [];
   if(!j.admins.includes(email.toLowerCase())) j.admins.push(email.toLowerCase());
-  Store.saveJap(j);
+  await Store.saveJap(j);
   toast("Promu Administrateur !");
   renderDashboard({id});
 }
 
-function renderDashboard({id}){
-  const j=Store.getJap(id); if(!j)return Router.go("/");
+async function renderDashboard({id}){
+  const j=await Store.getJap(id); if(!j)return Router.go("/");
   const user = Store.getUser();
   const isAdmin = (j.admins||[]).includes((user.email||"").toLowerCase());
   const userRole = getTargetHeir(j); // {type: 'heritier'|'enfant'|'autre', heir: Object|null}
@@ -384,10 +425,10 @@ function renderDashboard({id}){
   }).join("")}
   ${isAdmin ? `<button class="btn btn-ghost w-full mb-16" style="border:1px dashed var(--border)" onclick="showEditHModal('${id}')">+ Ajouter un héritier / membre</button>` : ''}
   
-  ${isAdmin ? `<button class='btn btn-danger btn-sm mt-32 mb-24 w-full' onclick='if(confirm("Supprimer définitivement la succession ?")){Store.deleteJap("${id}");Router.go("/");}'>🗑️ Supprimer cette succession</button>` : ""}
+  ${isAdmin ? `<button class='btn btn-danger btn-sm mt-32 mb-24 w-full' onclick='if(confirm("Supprimer définitivement la succession ?")){await Store.deleteJap("${id}");Router.go("/");}'>🗑️ Supprimer cette succession</button>` : ""}
   </div>`;
 }
-function lancerS(id){ const j=Store.getJap(id); j.statut="souhaits"; Store.saveJap(j); toast("Invitations envoyées !"); renderDashboard({id}); }
+async function lancerS(id){ const j=await Store.getJap(id); j.statut="souhaits"; await Store.saveJap(j); toast("Invitations envoyées !"); renderDashboard({id}); }
 
 /* ── VIEW INVENTAIRE ─────────────────────────────────────────── */
 let tmpPhotoUrl = null;
@@ -438,8 +479,8 @@ function runAIEval() {
   });
 }
 
-function renderInventaire({id}){
-  const j=Store.getJap(id); const b=j.biens||[];
+async function renderInventaire({id}){
+  const j=await Store.getJap(id); const b=j.biens||[];
   const isAdmin = (j.admins||[]).includes(Store.getUser().email.toLowerCase());
   const valTotal = b.reduce((a, c) => a + (parseFloat(c.val)||0), 0);
   
@@ -486,8 +527,8 @@ function showAddB(id){
     </div>
     <button class='btn btn-primary w-full mt-8' onclick='saveB("${id}")'>✅ Ajouter</button>`); 
 }
-function saveB(id){
-  const j = Store.getJap(id);
+async function saveB(id){
+  const j = await Store.getJap(id);
   const n = document.getElementById("b-n").value.trim();
   if(!n) return toast("Nom requis", "error");
   if(!j.biens) j.biens = [];
@@ -498,16 +539,16 @@ function saveB(id){
     val: parseFloat(document.getElementById("b-v").value) || 0,
     photo: tmpPhotoUrl
   });
-  Store.saveJap(j);
+  await Store.saveJap(j);
   Modal.close();
   toast("✅ Bien ajouté !");
   renderInventaire({id});
 }
-function delB(id,i){ const j=Store.getJap(id); j.biens.splice(i,1); Store.saveJap(j); renderInventaire({id}); }
+async function delB(id,i){ const j=await Store.getJap(id); j.biens.splice(i,1); await Store.saveJap(j); renderInventaire({id}); }
 
 /* ── VIEW SOUHAITS TRIABLE ───────────────────────────────────── */
-function renderSouhaits({id}){
-  const j=Store.getJap(id); 
+async function renderSouhaits({id}){
+  const j=await Store.getJap(id); 
   const userRole = getTargetHeir(j);
   if (userRole.type === 'autre') {
     toast("Membres simples n'ont pas de liste de souhaits.", "warning");
@@ -583,21 +624,21 @@ function renderSouhaits({id}){
   </div>`;
 }
 
-function togW(id, hId, bid){ 
-  const j=Store.getJap(id); const h=j.herit.find(x=>x.id===hId); 
+async function togW(id, hId, bid){ 
+  const j=await Store.getJap(id); const h=j.herit.find(x=>x.id===hId); 
   if(!h.souhaits)h.souhaits=[]; const idx=h.souhaits.indexOf(bid); 
   if(idx>=0)h.souhaits.splice(idx,1); else h.souhaits.push(bid); 
-  Store.saveJap(j); renderSouhaits({id}); 
+  await Store.saveJap(j); renderSouhaits({id}); 
 }
-function moveW(id, hId, idx, dir){ 
-  const j=Store.getJap(id); const h=j.herit.find(x=>x.id===hId); 
+async function moveW(id, hId, idx, dir){ 
+  const j=await Store.getJap(id); const h=j.herit.find(x=>x.id===hId); 
   const s=h.souhaits; const n=idx+dir; if(n<0||n>=s.length)return; 
-  [s[idx], s[n]]=[s[n], s[idx]]; Store.saveJap(j); renderSouhaits({id}); 
+  [s[idx], s[n]]=[s[n], s[idx]]; await Store.saveJap(j); renderSouhaits({id}); 
 }
 
 /* ── VIEW PARTAGE & RESULTAT ─────────────────────────────────── */
-function renderPartage({id}){
-  const j=Store.getJap(id);
+async function renderPartage({id}){
+  const j=await Store.getJap(id);
   if(j.statut==="partage") return showResult(j);
   document.getElementById("app").innerHTML=`<div class='topbar'><button class='topbar-back' onclick='Router.go("/jap/${id}")'>←</button><div class='topbar-title'>Algorithme JAP</div></div>
   <div class='view'><div class='lottery-box mb-24'><div class='lottery-emoji' style='font-size:64px;margin-bottom:16px'>🎲</div><div class='lottery-title' style='font-size:22px'>Lancer le Partage</div><p class='text-muted mt-8'>L'algorithme va attribuer équitablement les biens selon les souhaits, résoudre les conflits aléatoirement, et calculer automatiquement les soultes compensatoires.</p></div><button class='btn btn-primary w-full' style='font-size:18px;padding:20px' onclick='doP("${id}")'>Lancer la répartition ⚖️</button></div>`;
@@ -621,8 +662,8 @@ function calcSoultes(jap) {
   return jap;
 }
 
-function doP(id){ 
-  let j=Store.getJap(id); j.statut="partage"; j = calcSoultes(j); Store.saveJap(j); toast("Répartition terminée !"); showResult(j); 
+async function doP(id){ 
+  let j=await Store.getJap(id); j.statut="partage"; j = calcSoultes(j); await Store.saveJap(j); toast("Répartition terminée !"); showResult(j); 
 }
 
 function showResult(j) {
