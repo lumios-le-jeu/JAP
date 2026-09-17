@@ -393,7 +393,13 @@ function lancerS(id){ const j=Store.getJap(id); j.statut="souhaits"; Store.saveJ
 let tmpPhotoUrl = null;
 function handlePhotoUpload(input) {
   if (input.files && input.files[0]) {
-    const reader = new FileReader(); reader.onload = function(e) { tmpPhotoUrl = e.target.result; document.getElementById('b-photo-preview').src = tmpPhotoUrl; document.getElementById('b-photo-preview').style.display = 'block'; document.getElementById('b-photo-btn').innerHTML = '🖼️ Changer la photo'; }; reader.readAsDataURL(input.files[0]);
+    const reader = new FileReader(); 
+    reader.onload = function(e) { 
+      tmpPhotoUrl = e.target.result; 
+      document.getElementById('b-photo-preview').src = tmpPhotoUrl; 
+      document.getElementById('b-photo-preview').style.display = 'block'; 
+    }; 
+    reader.readAsDataURL(input.files[0]);
   }
 }
 function runAIEval() {
