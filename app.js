@@ -409,7 +409,7 @@ function runAIEval() {
   btn.innerHTML = "<i>Analyse...</i>"; btn.disabled = true;
   btn.classList.replace("btn-gold", "btn-ghost");
 
-  fetch('/api/estimer', {
+  fetch('https://jap-api.etienneleborgne.workers.dev/api/estimer', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ photo: tmpPhotoUrl, contexte: nom })
