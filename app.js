@@ -477,7 +477,7 @@ function showAddB(id){
         <label class="form-label">Prix estimé (€)</label>
         <input id='b-v' class='form-input' type='number' placeholder='Prix €' />
       </div>
-      <button id="ai-btn" class="btn btn-gold" style="white-space:nowrap" onclick="runAIEval()">🤖 Estimer (IA)</button>
+      <button id="ai-btn" class="btn btn-gold btn-sm" style="white-space:nowrap; height:45px;" onclick="runAIEval()">🤖 Estimer (IA)</button>
     </div>
     <div id="ai-resume" class="mb-12"></div>
     <div class="form-group">
