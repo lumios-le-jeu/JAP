@@ -1,0 +1,15 @@
+{
+  "name": "jap",
+  "version": "1.0.0",
+  "description": "Estimateur d'objets via DeepSeek Vision",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "estimer": "node lib/estimer.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "express": "^4.18.0",
+    "openai": "^1.0.0"
+  }
+}

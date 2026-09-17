@@ -398,8 +398,38 @@ function handlePhotoUpload(input) {
 }
 function runAIEval() {
   if(!tmpPhotoUrl) return toast("📸 Ajoutez une photo d'abord pour l'IA", "error");
-  const btn = document.getElementById("ai-btn"); btn.innerHTML = "<i>Analyse...</i>"; btn.classList.add("btn-ghost"); btn.classList.remove("btn-gold");
-  setTimeout(() => { const fp = Math.floor(Math.random() * 45) * 10 + 50; document.getElementById("b-v").value = fp; toast("IA : " + fp + "€"); btn.innerHTML = "🤖 IA"; btn.classList.add("btn-gold"); btn.classList.remove("btn-ghost"); }, 1500);
+  const nom = (document.getElementById("b-n").value||'').trim();
+  const btn = document.getElementById("ai-btn");
+  btn.innerHTML = "<i>Analyse...</i>"; btn.disabled = true;
+  btn.classList.replace("btn-gold", "btn-ghost");
+
+  fetch('/api/estimer', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ photo: tmpPhotoUrl, contexte: nom })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { toast('Erreur IA : ' + data.error, 'error'); return; }
+    // Remplir le prix
+    if (data.prix_median) document.getElementById("b-v").value = data.prix_median;
+    // Remplir la catégorie automatiquement si trouvée
+    if (data.categorie) {
+      const sel = document.getElementById("b-c");
+      for (let o of sel.options) { if (o.value === data.categorie) { sel.value = data.categorie; break; } }
+    }
+    // Remplir le nom si vide
+    if (!nom && data.objet) document.getElementById("b-n").value = data.objet;
+    toast(`🤖 IA : ${data.prix_median}€ (${data.etat})`);
+    // Afficher le résumé IA
+    const resume = document.getElementById('ai-resume');
+    if (resume) resume.innerHTML = `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">📊 Min: ${data.prix_min}€ | Méd: ${data.prix_median}€ | Max: ${data.prix_max}€<br>${data.explication||''}</div>`;
+  })
+  .catch(err => { toast('Erreur réseau : ' + err.message, 'error'); })
+  .finally(() => {
+    btn.innerHTML = "🤖 Estimer (IA)"; btn.disabled = false;
+    btn.classList.replace("btn-ghost", "btn-gold");
+  });
 }
 
 function renderInventaire({id}){
@@ -419,13 +449,54 @@ function renderInventaire({id}){
 function showAddB(id){ 
   tmpPhotoUrl = null;
   Modal.open(`<div class='modal-title'>Ajouter un bien</div>
-    <div style="text-align:center" class="mb-16"><img id="b-photo-preview" style="display:none;width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:12px;" /><label class="btn btn-ghost" id="b-photo-btn" style="width:100%">📸 Prendre une photo<input type="file" accept="image/*" style="display:none" onchange="handlePhotoUpload(this)"></label></div>
-    <input id='b-n' class='form-input mb-8' placeholder='Nom obj' />
-    <select id='b-c' class='form-select mb-8'>${CATS.map(c=>`<option value='${c.v}'>${c.e} ${c.l}</option>`).join("")}</select>
-    <div class="flex gap-8 mb-24"><input id='b-v' class='form-input' type='number' placeholder='Prix €' style="flex:1" /><button id="ai-btn" class="btn btn-gold btn-sm" onclick="runAIEval()">🤖 Estimer (IA)</button></div>
-    <button class='btn btn-primary' onclick='saveB("${id}")'>Ajouter</button>`); 
+    <div class="mb-16">
+      <img id="b-photo-preview" style="display:none;width:100%;height:180px;object-fit:cover;border-radius:12px;margin-bottom:12px;" />
+      <div style="display:flex;gap:8px">
+        <label class="btn btn-ghost" style="flex:1;text-align:center">
+          📸 Prendre une photo
+          <input type="file" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoUpload(this)">
+        </label>
+        <label class="btn btn-ghost" style="flex:1;text-align:center">
+          🖼️ Depuis l'album
+          <input type="file" accept="image/*" style="display:none" onchange="handlePhotoUpload(this)">
+        </label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nom / Détail de l'objet</label>
+      <input id='b-n' class='form-input' placeholder='Ex: Montre Tissot, état neuf, boîte incluse' />
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:4px">
+      <div class="form-group" style="flex:1;margin-bottom:0">
+        <label class="form-label">Prix estimé (€)</label>
+        <input id='b-v' class='form-input' type='number' placeholder='Prix €' />
+      </div>
+      <button id="ai-btn" class="btn btn-gold" style="white-space:nowrap" onclick="runAIEval()">🤖 Estimer (IA)</button>
+    </div>
+    <div id="ai-resume" class="mb-12"></div>
+    <div class="form-group">
+      <label class="form-label">Catégorie</label>
+      <select id='b-c' class='form-select'>${CATS.map(c=>`<option value='${c.v}'>${c.e} ${c.l}</option>`).join("")}</select>
+    </div>
+    <button class='btn btn-primary w-full mt-8' onclick='saveB("${id}")'>✅ Ajouter</button>`); 
 }
-function saveB(id){ const j=Store.getJap(id); const n=document.getElementById("b-n").value.trim(); if(!n)return toast("Nom requis","error"); j.biens.push({id:uid(),nom:n,cat:document.getElementById("b-c").value,val:document.getElementById("b-v").value,photo:tmpPhotoUrl}); Store.saveJap(j); Modal.close(); renderInventaire({id}); }
+function saveB(id){
+  const j = Store.getJap(id);
+  const n = document.getElementById("b-n").value.trim();
+  if(!n) return toast("Nom requis", "error");
+  if(!j.biens) j.biens = [];
+  j.biens.push({
+    id: uid(),
+    nom: n,
+    cat: document.getElementById("b-c").value,
+    val: parseFloat(document.getElementById("b-v").value) || 0,
+    photo: tmpPhotoUrl
+  });
+  Store.saveJap(j);
+  Modal.close();
+  toast("✅ Bien ajouté !");
+  renderInventaire({id});
+}
 function delB(id,i){ const j=Store.getJap(id); j.biens.splice(i,1); Store.saveJap(j); renderInventaire({id}); }
 
 /* ── VIEW SOUHAITS TRIABLE ───────────────────────────────────── */
