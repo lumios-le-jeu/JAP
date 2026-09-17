@@ -7,17 +7,17 @@ console.log("%c JAP v.0.1 ", "background: #8b5cf6; color: white; padding: 4px; b
 /* ── STORE ───────────────────────────────────────────────────── */
 const supabaseUrl = "https://ucydckuzsbbfflbnxkkl.supabase.co";
 const supabaseKey = "sb_publishable_hbsg3nktIYOasu0Kld7Hpg_pp9zh9_C";
-const supabase = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
 const Store = {
   _get(k,d=null){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}},
   _set(k,v){localStorage.setItem(k,JSON.stringify(v));},
   async getJaps(){
-    if(!supabase) return this._get('jap_list',[]);
+    if(!supabaseClient) return this._get('jap_list',[]);
     const local = this._get('jap_list',[]);
     const ids = local.map(j=>j.id);
     if(ids.length === 0) return [];
-    const { data } = await supabase.from('japs').select('data').in('id', ids);
+    const { data } = await supabaseClient.from('japs').select('data').in('id', ids);
     if(data) {
       const remote = data.map(d=>d.data);
       this._set('jap_list', remote);
@@ -27,15 +27,15 @@ const Store = {
   },
   async saveJaps(j){this._set('jap_list',j);},
   async getJap(id){
-    if(supabase) {
-      const { data } = await supabase.from('japs').select('data').eq('id', id).single();
+    if(supabaseClient) {
+      const { data } = await supabaseClient.from('japs').select('data').eq('id', id).single();
       if(data) return data.data;
     }
     return this._get('jap_list',[]).find(j=>j.id===id)||null;
   },
   async getJapByCode(code){
-    if(supabase) {
-      const { data } = await supabase.from('japs').select('data').eq('code', code).single();
+    if(supabaseClient) {
+      const { data } = await supabaseClient.from('japs').select('data').eq('code', code).single();
       if(data) {
         // Also save it locally so getJaps() finds it
         const list = this._get('jap_list',[]);
@@ -51,13 +51,13 @@ const Store = {
     if(i>=0) list[i]=jap; else list.unshift(jap);
     this._set('jap_list', list);
     
-    if(supabase) {
-      await supabase.from('japs').upsert({ id: jap.id, code: jap.code, data: jap });
+    if(supabaseClient) {
+      await supabaseClient.from('japs').upsert({ id: jap.id, code: jap.code, data: jap });
     }
   },
   async deleteJap(id){
     this._set('jap_list', this._get('jap_list',[]).filter(j=>j.id!==id));
-    if(supabase) await supabase.from('japs').delete().eq('id', id);
+    if(supabaseClient) await supabaseClient.from('japs').delete().eq('id', id);
   },
   getUser(){return this._get('jap_user',{email:'', nom:''});},
   setUser(u){this._set('jap_user',u);},
