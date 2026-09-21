@@ -1,7 +1,7 @@
 {
   "name": "jap",
   "version": "1.0.0",
-  "description": "Estimateur d'objets via DeepSeek Vision",
+  "description": "JAP — Le Jour d'Après : partage équitable des biens d'une succession",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "dotenv": "^16.0.0",
-    "express": "^4.18.0",
-    "openai": "^1.0.0"
+    "express": "^4.18.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
