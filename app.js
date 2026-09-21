@@ -432,14 +432,38 @@ async function lancerS(id){ const j=await Store.getJap(id); j.statut="souhaits";
 
 /* ── VIEW INVENTAIRE ─────────────────────────────────────────── */
 let tmpPhotoUrl = null;
+
+// Compresse une image Data URL vers max 800px et qualité 0.7
+// Nécessaire sur mobile où les photos peuvent faire 3-10 Mo en base64
+function compressImage(dataUrl, maxPx = 800, quality = 0.7) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxPx || h > maxPx) {
+        if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+        else { w = Math.round(w * maxPx / h); h = maxPx; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl); // fallback sans compression
+    img.src = dataUrl;
+  });
+}
+
 function handlePhotoUpload(input) {
   if (input.files && input.files[0]) {
-    const reader = new FileReader(); 
-    reader.onload = function(e) { 
-      tmpPhotoUrl = e.target.result; 
-      document.getElementById('b-photo-preview').src = tmpPhotoUrl; 
-      document.getElementById('b-photo-preview').style.display = 'block'; 
-    }; 
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      const preview = document.getElementById('b-photo-preview');
+      // Compression avant stockage (critique sur mobile)
+      tmpPhotoUrl = await compressImage(e.target.result);
+      preview.src = tmpPhotoUrl;
+      preview.style.display = 'block';
+    };
     reader.readAsDataURL(input.files[0]);
   }
 }
@@ -528,21 +552,34 @@ function showAddB(id){
     <button class='btn btn-primary w-full mt-8' onclick='saveB("${id}")'>✅ Ajouter</button>`); 
 }
 async function saveB(id){
-  const j = await Store.getJap(id);
-  const n = document.getElementById("b-n").value.trim();
-  if(!n) return toast("Nom requis", "error");
-  if(!j.biens) j.biens = [];
-  j.biens.push({
-    id: uid(),
-    nom: n,
-    cat: document.getElementById("b-c").value,
-    val: parseFloat(document.getElementById("b-v").value) || 0,
-    photo: tmpPhotoUrl
-  });
-  await Store.saveJap(j);
-  Modal.close();
-  toast("✅ Bien ajouté !");
-  renderInventaire({id});
+  const btn = document.querySelector('#modal-content .btn-primary');
+  if(btn) { btn.disabled = true; btn.innerHTML = '⏳ Enregistrement...'; }
+  try {
+    const j = await Store.getJap(id);
+    const n = document.getElementById("b-n").value.trim();
+    if(!n) { if(btn){btn.disabled=false;btn.innerHTML='✅ Ajouter';} return toast("Nom requis", "error"); }
+    if(!j.biens) j.biens = [];
+    j.biens.push({
+      id: uid(),
+      nom: n,
+      cat: document.getElementById("b-c").value,
+      val: parseFloat(document.getElementById("b-v").value) || 0,
+      photo: tmpPhotoUrl
+    });
+    await Store.saveJap(j);
+    Modal.close();
+    toast("✅ Bien ajouté !");
+    renderInventaire({id});
+  } catch(err) {
+    console.error('saveB error:', err);
+    if(btn) { btn.disabled = false; btn.innerHTML = '✅ Ajouter'; }
+    // Erreur fréquente sur mobile : localStorage plein (quota dépassé)
+    if(err && err.name === 'QuotaExceededError') {
+      toast('❌ Stockage plein ! Essayez sans photo ou supprimez des biens.', 'error');
+    } else {
+      toast('❌ Erreur lors de la sauvegarde : ' + (err.message||err), 'error');
+    }
+  }
 }
 async function delB(id,i){ const j=await Store.getJap(id); j.biens.splice(i,1); await Store.saveJap(j); renderInventaire({id}); }
 
