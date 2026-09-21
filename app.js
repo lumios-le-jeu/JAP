@@ -584,8 +584,10 @@ async function saveB(id){
 async function delB(id,i){ const j=await Store.getJap(id); j.biens.splice(i,1); await Store.saveJap(j); renderInventaire({id}); }
 
 /* ── VIEW SOUHAITS TRIABLE ───────────────────────────────────── */
-async function renderSouhaits({id}){
-  const j=await Store.getJap(id); 
+async function renderSouhaits({id}, cachedJap = null){
+  // cachedJap permet d'éviter un re-fetch Supabase après une modification
+  // (évite la race condition de réplication qui faisait disparaître les items du panier)
+  const j = cachedJap || await Store.getJap(id);
   const userRole = getTargetHeir(j);
   if (userRole.type === 'autre') {
     toast("Membres simples n'ont pas de liste de souhaits.", "warning");
@@ -665,12 +667,16 @@ async function togW(id, hId, bid){
   const j=await Store.getJap(id); const h=j.herit.find(x=>x.id===hId); 
   if(!h.souhaits)h.souhaits=[]; const idx=h.souhaits.indexOf(bid); 
   if(idx>=0)h.souhaits.splice(idx,1); else h.souhaits.push(bid); 
-  await Store.saveJap(j); renderSouhaits({id}); 
+  await Store.saveJap(j);
+  // On passe j directement pour éviter le re-fetch Supabase (race condition)
+  renderSouhaits({id}, j); 
 }
 async function moveW(id, hId, idx, dir){ 
   const j=await Store.getJap(id); const h=j.herit.find(x=>x.id===hId); 
   const s=h.souhaits; const n=idx+dir; if(n<0||n>=s.length)return; 
-  [s[idx], s[n]]=[s[n], s[idx]]; await Store.saveJap(j); renderSouhaits({id}); 
+  [s[idx], s[n]]=[s[n], s[idx]]; await Store.saveJap(j);
+  // On passe j directement pour éviter le re-fetch Supabase (race condition)
+  renderSouhaits({id}, j); 
 }
 
 /* ── VIEW PARTAGE & RESULTAT ─────────────────────────────────── */
